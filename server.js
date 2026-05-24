@@ -336,9 +336,31 @@ app.listen(PORT, () => {
 // ══════════════════════════════════════════════════════
 // AI ANALYSIS ENDPOINT
 // ══════════════════════════════════════════════════════
+
+// Debug: تحقق إن الـ keys موجودة
+app.get('/api/debug-keys', (req, res) => {
+  res.json({
+    GROQ_API_KEY:       process.env.GROQ_API_KEY       ? '✅ set (' + process.env.GROQ_API_KEY.length + ' chars)' : '❌ NOT SET',
+    GEMINI_API_KEY:     process.env.GEMINI_API_KEY     ? '✅ set (' + process.env.GEMINI_API_KEY.length + ' chars)' : '❌ NOT SET',
+    DEEPSEEK_API_KEY:   process.env.DEEPSEEK_API_KEY   ? '✅ set (' + process.env.DEEPSEEK_API_KEY.length + ' chars)' : '❌ NOT SET',
+    OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY ? '✅ set (' + process.env.OPENROUTER_API_KEY.length + ' chars)' : '❌ NOT SET',
+    OLLAMA_API_KEY:     process.env.OLLAMA_API_KEY     ? '✅ set (' + process.env.OLLAMA_API_KEY.length + ' chars)' : '❌ NOT SET',
+  });
+});
 function callApi(url, options, body) {
   return new Promise((resolve, reject) => {
-    const req = https.request(url, options, (res) => {
+    // rejectUnauthorized: false = نفس verify=False في Python
+    const opts = {
+      ...options,
+      rejectUnauthorized: false,
+    };
+    // parse URL
+    const u = new URL(url);
+    opts.hostname = u.hostname;
+    opts.port     = u.port || 443;
+    opts.path     = u.pathname + u.search;
+
+    const req = https.request(opts, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
@@ -347,7 +369,7 @@ function callApi(url, options, body) {
       });
     });
     req.on('error', reject);
-    req.setTimeout(30000, () => { req.destroy(); reject(new Error('Timeout')); });
+    req.setTimeout(30000, () => { req.destroy(); reject(new Error('Timeout after 30s')); });
     if (body) req.write(body);
     req.end();
   });
