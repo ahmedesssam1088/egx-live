@@ -1,7 +1,7 @@
 {
-  "name": "egx-live-api",
-  "version": "1.0.0",
-  "description": "EGX Live Stock Prices API",
+  "name": "egx-live",
+  "version": "2.0.0",
+  "description": "EGX Live Prices — TradingView WebSocket",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -9,7 +9,7 @@
   "dependencies": {
     "express": "^4.18.2",
     "cors": "^2.8.5",
-    "yahoo-finance2": "^2.11.0"
+    "ws": "^8.16.0"
   },
   "engines": {
     "node": ">=18"
