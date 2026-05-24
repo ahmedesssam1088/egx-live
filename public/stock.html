@@ -316,17 +316,13 @@ body::before{content:'';position:fixed;inset:0;
         <input type="radio" name="aiModel" value="gemini">
         <span>✨ Gemini <small>2.0 Flash</small></span>
       </label>
-      <label class="model-opt">
-        <input type="radio" name="aiModel" value="deepseek">
-        <span>🔵 DeepSeek <small>Chat</small></span>
-      </label>
-      <label class="model-opt">
+<label class="model-opt">
         <input type="radio" name="aiModel" value="openrouter">
         <span>🌐 OpenRouter <small>Llama 3.3</small></span>
       </label>
       <label class="model-opt">
         <input type="radio" name="aiModel" value="ollama">
-        <span>🦙 Ollama <small>Llama 3</small></span>
+        <span>🦙 Mistral <small>7B Free</small></span>
       </label>
     </div>
 
@@ -643,9 +639,8 @@ const RAILWAY = 'https://egx-live-production.up.railway.app';
 const MODEL_NAMES = {
   groq:       '⚡ Groq — Llama 3.3 70B',
   gemini:     '✨ Gemini 2.0 Flash',
-  deepseek:   '🔵 DeepSeek Chat',
   openrouter: '🌐 OpenRouter — Llama 3.3',
-  ollama:     '🦙 Ollama — Llama 3',
+  ollama:     '🦙 Mistral 7B Free (OpenRouter)',
 };
 
 async function runAI() {
