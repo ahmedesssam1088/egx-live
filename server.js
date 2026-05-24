@@ -1,3 +1,4 @@
+// EGX Live Server v3.0 — 147 stocks
 const express   = require('express');
 const cors      = require('cors');
 const WebSocket = require('ws');
@@ -82,7 +83,7 @@ const EGX_TICKERS = [
   // القائمة الكاملة من TradingView EGX — 150 سهم
   'AALR','ABUK','ACAMD','ACAP','ACFR','ACGC','ACTF','ADCI','ADIB','ADPC',
   'ADRI','AFDI','AFMC','AIDC','AIFI','AIH','AJWA','ALCN','ALUM','AMER',
-  'AMES','AMIA','AMOC','AMPI','ANCC','ANFI','APSW','ARAB','ARCC','AREH',
+  'AMES','AMIA','AMOC','AMPI','ANCC','APSW','ARAB','ARCC','AREH',
   'ARVA','ASCM','ASPI','ATLC','ATQA','AXPH',
   'BINV','BIOC','BONY','BTFH',
   'CANA','CCAP','CCAPP','CFGH','CICH','CIEB','CIRA','CLHO','CNFN','COMI',
@@ -99,9 +100,9 @@ const EGX_TICKERS = [
   'LCSW',
   'MASR','MBSC','MCQE','MFPC','MFSC','MHOT','MICH','MIPH','MOIL','MOIN',
   'MPCI','MPRC','MTIE',
-  'NAHO','NAPR','NINH','NIPH',
+  'NAHO','NINH','NIPH',
   'OCDI','OCPH','OFH','OIH','OLFI','ORAS','ORHD','ORWE',
-  'PHAR','PHDC','PHGC','PHTV','POUL','PRDC',
+  'PHAR','PHDC','PHTV','POUL','PRDC',
   'QNBE',
   'RAYA','RMDA',
   'SAIB','SAUD','SCEM','SCTS','SDTI','SKPC','SPHT','SPIN','SUGR','SVCE','SWDY',
@@ -302,21 +303,6 @@ app.get('/api/health', (req, res) => {
     status:      wsConnected ? '🟢 live' : '🔴 reconnecting',
   });
 });
-
-// ══════════════════════════════════════════════════════
-// STATIC FALLBACK — أسهم منعدمة التداول (مش بتيجي من TV أو Yahoo)
-// بياناتها من Investing.com مايو 2026
-// ══════════════════════════════════════════════════════
-const STATIC_PRICES = {
-  'NAPR': { ticker:'NAPR', price:21.26, chg:-0.72, chgPct:-3.27, high52:25.75, low52:5.00,  prevClose:21.98, source:'static_investing' },
-  'PHGC': { ticker:'PHGC', price:0.088, chg:0.004, chgPct:4.76,  high52:1.79,  low52:0.070, prevClose:0.084, source:'static_investing' },
-};
-
-// حط الأسعار الثابتة في الكاش من البداية
-Object.entries(STATIC_PRICES).forEach(([ticker, data]) => {
-  priceCache[ticker] = { ...data, ts: Date.now(), volume: 0 };
-});
-console.log('📌 Loaded', Object.keys(STATIC_PRICES).length, 'static fallback prices');
 
 // ══════════════════════════════════════════════════════
 // START
