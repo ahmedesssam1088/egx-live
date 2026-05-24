@@ -304,6 +304,21 @@ app.get('/api/health', (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════
+// STATIC FALLBACK — أسهم منعدمة التداول (مش بتيجي من TV أو Yahoo)
+// بياناتها من Investing.com مايو 2026
+// ══════════════════════════════════════════════════════
+const STATIC_PRICES = {
+  'NAPR': { ticker:'NAPR', price:21.26, chg:-0.72, chgPct:-3.27, high52:25.75, low52:5.00,  prevClose:21.98, source:'static_investing' },
+  'PHGC': { ticker:'PHGC', price:0.088, chg:0.004, chgPct:4.76,  high52:1.79,  low52:0.070, prevClose:0.084, source:'static_investing' },
+};
+
+// حط الأسعار الثابتة في الكاش من البداية
+Object.entries(STATIC_PRICES).forEach(([ticker, data]) => {
+  priceCache[ticker] = { ...data, ts: Date.now(), volume: 0 };
+});
+console.log('📌 Loaded', Object.keys(STATIC_PRICES).length, 'static fallback prices');
+
+// ══════════════════════════════════════════════════════
 // START
 // ══════════════════════════════════════════════════════
 app.listen(PORT, () => {
