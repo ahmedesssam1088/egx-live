@@ -1,0 +1,2 @@
+# egx-live
+borsa
