@@ -310,10 +310,10 @@ app.listen(PORT, () => {
   console.log(`\n🚀 EGX Live Server on port ${PORT}`);
   console.log(`📡 Connecting to TradingView WebSocket...`);
   connectTradingView();
-  // بعد 30 ثانية من البداية، جيب الأسهم الناقصة من Yahoo
+  // بعد 15 ثانية (بعد ما TV يبعت أول batch)، جيب الناقصين من Yahoo
   setTimeout(() => {
     fillMissingFromYahoo();
-    // وكرر كل دقيقتين
-    setInterval(fillMissingFromYahoo, 120_000);
-  }, 30_000);
+    // وكرر كل دقيقة
+    setInterval(fillMissingFromYahoo, 60_000);
+  }, 15_000);
 });
