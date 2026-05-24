@@ -80,7 +80,7 @@ let wsConnected = false;
 // ALL EGX TICKERS
 // ══════════════════════════════════════════════════════
 const EGX_TICKERS = [
-  // القائمة الكاملة من TradingView EGX — 150 سهم
+  // القائمة الكاملة من TradingView EGX — 147 سهم
   'AALR','ABUK','ACAMD','ACAP','ACFR','ACGC','ACTF','ADCI','ADIB','ADPC',
   'ADRI','AFDI','AFMC','AIDC','AIFI','AIH','AJWA','ALCN','ALUM','AMER',
   'AMES','AMIA','AMOC','AMPI','ANCC','APSW','ARAB','ARCC','AREH',
