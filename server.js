@@ -1,6 +1,58 @@
 const express   = require('express');
 const cors      = require('cors');
 const WebSocket = require('ws');
+const https     = require('https');
+
+// Fallback: جيب السعر من Yahoo Finance للأسهم المنخفضة التداول
+function fetchYahooPrice(ticker) {
+  return new Promise((resolve) => {
+    const symbol = encodeURIComponent(ticker + '.CA');
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
+    const req = https.get(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          const meta = json?.chart?.result?.[0]?.meta;
+          if (meta?.regularMarketPrice) {
+            resolve({
+              ticker,
+              price:    Math.round(meta.regularMarketPrice * 100) / 100,
+              chg:      Math.round((meta.regularMarketPrice - meta.previousClose) * 100) / 100,
+              chgPct:   Math.round((meta.regularMarketPrice - meta.previousClose) / meta.previousClose * 10000) / 100,
+              prevClose:meta.previousClose,
+              high52:   meta.fiftyTwoWeekHigh,
+              low52:    meta.fiftyTwoWeekLow,
+              ts:       Date.now(),
+              source:   'yahoo_fallback',
+            });
+          } else { resolve(null); }
+        } catch(e) { resolve(null); }
+      });
+    });
+    req.on('error', () => resolve(null));
+    req.setTimeout(5000, () => { req.destroy(); resolve(null); });
+  });
+}
+
+// كل دقيقتين: جيب الأسهم الناقصة من Yahoo
+async function fillMissingFromYahoo() {
+  const missing = EGX_TICKERS.filter(t => !priceCache[t]);
+  if (missing.length === 0) return;
+  console.log(`[${new Date().toISOString()}] 🔍 Fetching ${missing.length} missing from Yahoo: ${missing.join(',')}`);
+  for (const ticker of missing) {
+    const data = await fetchYahooPrice(ticker);
+    if (data) {
+      priceCache[ticker] = data;
+      lastUpdate = Date.now();
+      console.log(`  ✅ Yahoo fallback: ${ticker} = ${data.price}`);
+    }
+    await new Promise(r => setTimeout(r, 300));
+  }
+}
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -258,4 +310,10 @@ app.listen(PORT, () => {
   console.log(`\n🚀 EGX Live Server on port ${PORT}`);
   console.log(`📡 Connecting to TradingView WebSocket...`);
   connectTradingView();
+  // بعد 30 ثانية من البداية، جيب الأسهم الناقصة من Yahoo
+  setTimeout(() => {
+    fillMissingFromYahoo();
+    // وكرر كل دقيقتين
+    setInterval(fillMissingFromYahoo, 120_000);
+  }, 30_000);
 });
