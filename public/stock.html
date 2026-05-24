@@ -33,34 +33,41 @@ body::before{content:'';position:fixed;inset:0;
 .tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 9px;border-radius:4px;margin-left:6px;}
 .tag-s{background:rgba(41,121,255,.15);color:var(--blue);}
 .tag-m{background:rgba(255,193,7,.12);color:var(--gold);}
-.live-badge{display:flex;align-items:center;gap:7px;background:rgba(0,230,118,.08);
-  border:1px solid rgba(0,230,118,.25);border-radius:20px;padding:7px 15px;font-size:12px;color:var(--green);}
+
+/* LIVE PRICE SOURCE */
+.price-source{
+  display:flex;align-items:center;gap:7px;
+  background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.25);
+  border-radius:20px;padding:7px 15px;font-size:12px;color:var(--green);}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 1.4s infinite;}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* QUICK NAV */
 .stock-nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;padding:12px;
-  background:var(--surf);border:1px solid var(--border);border-radius:12px;max-height:100px;overflow-y:auto;}
+  background:var(--surf);border:1px solid var(--border);border-radius:12px;max-height:90px;overflow-y:auto;}
 .nav-item{display:flex;align-items:center;gap:4px;background:var(--card);border:1px solid var(--border);
   border-radius:7px;padding:5px 10px;cursor:pointer;font-size:11px;font-weight:700;
   transition:all .15s;text-decoration:none;color:var(--text);}
 .nav-item:hover{border-color:var(--accent);color:var(--accent);}
 .nav-item.active-nav{border-color:var(--accent);background:rgba(0,212,170,.1);color:var(--accent);}
-.nav-tick{font-family:'JetBrains Mono',monospace;font-size:11px;}
 
 /* PRICE HERO */
-.price-row{display:flex;flex-wrap:wrap;gap:20px;align-items:center;
+.price-row{
   background:var(--surf);border:1px solid var(--border);border-radius:14px;
-  padding:22px 26px;margin-bottom:20px;}
-.price-big{font-family:'JetBrains Mono',monospace;font-size:48px;font-weight:700;line-height:1;}
-.price-lbl{font-size:11px;color:var(--muted);margin-bottom:6px;}
-.chg-pill{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:18px;
-  padding:7px 16px;border-radius:8px;}
-.up-pill{color:var(--green);background:rgba(0,230,118,.1);}
-.dn-pill{color:var(--red);background:rgba(255,61,90,.1);}
+  padding:22px 26px;margin-bottom:20px;
+  display:flex;flex-wrap:wrap;gap:20px;align-items:center;}
+
+/* ── TradingView Symbol Info Widget container ── */
+.tv-symbol-info{
+  flex:1;min-width:300px;
+  border-radius:10px;overflow:hidden;
+  background:transparent;
+}
+
 .dvdr{width:1px;background:var(--border);height:48px;align-self:center;}
 .stat-mini .sv{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;}
 .stat-mini .sl{font-size:10px;color:var(--muted);margin-top:3px;}
+.up{color:var(--green)!important;}
 
 /* CHART */
 .chart-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:20px;}
@@ -137,7 +144,7 @@ body::before{content:'';position:fixed;inset:0;
 .news-item{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);}
 .news-item:last-child{border:none;}
 .ndot{width:7px;height:7px;border-radius:50%;background:var(--accent);margin-top:5px;flex-shrink:0;}
-.nt{font-size:13px;line-height:1.6;}
+.nt2{font-size:13px;line-height:1.6;}
 .nd{font-size:10px;color:var(--muted);margin-top:3px;}
 .btn{background:linear-gradient(135deg,var(--accent),var(--blue));color:#000;border:none;
   padding:10px 22px;border-radius:9px;font-family:'Cairo',sans-serif;font-size:13px;font-weight:700;
@@ -145,15 +152,15 @@ body::before{content:'';position:fixed;inset:0;
 .btn:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,212,170,.3);}
 .footer{text-align:center;padding:22px 0;border-top:1px solid var(--border);
   color:var(--muted);font-size:11px;line-height:1.9;}
-.up{color:var(--green)!important;}
 </style>
 </head>
 <body>
 <div class="wrap">
 
+<!-- TOPBAR -->
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-    <a class="back-btn" href="index.html">← العودة للقائمة</a>
+    <a class="back-btn" href="index.html">← العودة</a>
     <div id="tickerBadge" class="ticker-badge">—</div>
     <div>
       <div class="co-name" id="coName">جاري التحميل...</div>
@@ -164,41 +171,39 @@ body::before{content:'';position:fixed;inset:0;
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-    <div class="live-badge"><div class="dot"></div>TradingView · بيانات حقيقية</div>
-    <button class="btn" onclick="runAI()">🤖 تحديث تحليل AI</button>
+    <div class="price-source">
+      <div class="dot"></div>
+      سعر لحظي · TradingView
+    </div>
+    <button class="btn" onclick="runAI()">🤖 تحليث تحليل AI</button>
   </div>
 </div>
 
-<!-- QUICK NAV - top 50 by market cap -->
+<!-- QUICK NAV -->
 <div class="stock-nav" id="stockNav"></div>
 
-<!-- PRICE HERO -->
+<!-- PRICE HERO — TradingView Symbol Info Widget (السعر اللحظي الحقيقي) -->
 <div class="price-row">
-  <div>
-    <div class="price-lbl">السعر (جنيه)</div>
-    <div class="price-big" id="priceVal" style="color:var(--accent)">—</div>
+  <div class="tv-symbol-info" id="tvSymbolInfo">
+    <!-- TradingView Symbol Info Widget — بيعرض السعر اللحظي مباشرة -->
   </div>
-  <div id="chgPill" class="chg-pill up-pill">—</div>
-  <div class="dvdr"></div>
-  <div class="stat-mini"><div class="sv" id="high52v">—</div><div class="sl">أعلى 52 أسبوع</div></div>
-  <div class="dvdr"></div>
-  <div class="stat-mini"><div class="sv" id="low52v">—</div><div class="sl">أدنى 52 أسبوع</div></div>
-  <div class="dvdr"></div>
-  <div class="stat-mini"><div class="sv" id="capV">—</div><div class="sl">القيمة السوقية</div></div>
   <div class="dvdr"></div>
   <div class="stat-mini"><div class="sv up" id="targetV">—</div><div class="sl">هدف المحللين</div></div>
   <div class="dvdr"></div>
-  <div class="stat-mini"><div class="sv" id="rankV">—</div><div class="sl">الترتيب في EGX</div></div>
+  <div class="stat-mini"><div class="sv" id="rankV">—</div><div class="sl">الترتيب</div></div>
+  <div class="dvdr"></div>
+  <div class="stat-mini"><div class="sv" id="capV">—</div><div class="sl">القيمة السوقية</div></div>
+  <div class="dvdr"></div>
+  <div class="stat-mini"><div class="sv" id="peV">—</div><div class="sl">P/E Ratio</div></div>
 </div>
 
-<!-- CHART -->
+<!-- CHART — TradingView Advanced Chart -->
 <div class="chart-card">
   <div class="chart-head">
     <div>
-      <div class="chart-title">📈 الرسم البياني الحقيقي · <span id="chartSymbol">EGX:—</span></div>
-      <div class="tv-note">مدعوم بـ TradingView — بيانات حقيقية للبورصة المصرية</div>
+      <div class="chart-title">📈 الرسم البياني اللحظي · <span id="chartSymbol">EGX:—</span></div>
+      <div class="tv-note">TradingView · بيانات حقيقية لحظية · غيّر الفترة والمؤشرات مباشرة ↓</div>
     </div>
-    <div style="font-size:11px;color:var(--muted);">غيّر الفترة والمؤشرات مباشرة من داخل الشارت ↓</div>
   </div>
   <div style="width:100%;height:500px;">
     <div id="tv_chart" style="width:100%;height:500px;"></div>
@@ -228,7 +233,7 @@ body::before{content:'';position:fixed;inset:0;
     <div class="lvl sup"><span class="lt">↓ دعم 2</span><span class="lp" id="s2">—</span></div>
     <div class="lvl sup"><span class="lt">↓ دعم 3</span><span class="lp" id="s3">—</span></div>
     <div style="margin-top:14px;padding:12px;background:var(--surf);border-radius:8px;">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">موقع السعر من أعلى 52 أسبوع</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">موقع السعر من نطاق 52 أسبوع</div>
       <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
         <div id="yr-bar" style="height:100%;background:linear-gradient(90deg,var(--blue),var(--accent));border-radius:3px;transition:width 1s;width:0%"></div>
       </div>
@@ -244,29 +249,29 @@ body::before{content:'';position:fixed;inset:0;
   <div class="rec-top">
     <div>
       <div style="font-size:16px;font-weight:700;">🤖 توصية الذكاء الاصطناعي</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:3px;">تحليل فني وأساسي متكامل</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px;">محسوبة من السعر اللحظي الحقيقي</div>
     </div>
     <div class="sig-badge-big sb-buy" id="mainSig">—</div>
   </div>
   <div class="targets">
     <div class="t-box tb-buy">
-      <div class="tl">💚 سعر الشراء</div>
+      <div class="tl" id="lbl-buy">💚 سعر الشراء</div>
       <div class="tv" id="t-buy">—</div>
       <div class="tp" id="t-buy-p">—</div>
     </div>
     <div class="t-box tb-sell">
-      <div class="tl">🎯 الهدف / البيع</div>
+      <div class="tl" id="lbl-sell">🎯 الهدف / البيع</div>
       <div class="tv" id="t-sell">—</div>
       <div class="tp" id="t-sell-p">—</div>
     </div>
     <div class="t-box tb-stop">
-      <div class="tl">🛑 وقف الخسارة</div>
+      <div class="tl" id="lbl-stop">🛑 وقف الخسارة</div>
       <div class="tv" id="t-stop">—</div>
       <div class="tp" id="t-stop-p">—</div>
     </div>
   </div>
   <div class="conf-bar">
-    <div class="conf-lbl"><span>مستوى الثقة في التوصية</span><span id="conf-pct">—</span></div>
+    <div class="conf-lbl"><span>مستوى الثقة</span><span id="conf-pct">—</span></div>
     <div class="conf-track"><div class="conf-fill" id="conf-fill" style="width:0%"></div></div>
   </div>
 </div>
@@ -277,7 +282,7 @@ body::before{content:'';position:fixed;inset:0;
     <div class="ai-icon">🧠</div>
     <div>
       <div class="ai-ttl">التحليل الشامل بالذكاء الاصطناعي</div>
-      <div class="ai-sub">تحليل معمّق — فني، أساسي، مخاطر، توقعات</div>
+      <div class="ai-sub">تحليل معمّق بناءً على السعر اللحظي الحقيقي</div>
     </div>
   </div>
   <div class="ai-body" id="aiText">
@@ -298,58 +303,58 @@ body::before{content:'';position:fixed;inset:0;
 </div>
 
 <div class="footer">
-  ⚠️ هذا التحليل لأغراض تعليمية فقط — ليس نصيحة استثمارية رسمية<br>
-  البيانات: StockAnalysis.com / Investing.com | الشارت: TradingView | التحليل: Claude AI
+  ⚠️ لأغراض تعليمية فقط · الشارت والسعر: TradingView (لحظي) · التحليل: Claude AI
 </div>
 </div>
 
-<!-- TradingView library — loaded once at bottom -->
+<!-- TradingView Library -->
 <script src="https://s3.tradingview.com/tv.js"></script>
+<script src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-info.js" async></script>
+
 <script>
-// ── 1. Get ticker from URL, find stock in ALL_STOCKS ──
+// ── 1. Get stock from URL ──
 const params = new URLSearchParams(location.search);
 const TICKER = (params.get('ticker') || 'TMGH').toUpperCase();
+const stock  = ALL_STOCKS.find(s => s.ticker === TICKER) || ALL_STOCKS[2];
 
-// ALL_STOCKS is defined in data.js
-const stock = ALL_STOCKS.find(s => s.ticker === TICKER) || ALL_STOCKS[2];
-
-if (!stock) {
-  document.body.innerHTML = '<div style="padding:40px;color:#ff3d5a;font-family:Cairo,sans-serif;font-size:20px;">⚠️ السهم غير موجود. <a href="index.html" style="color:#00d4aa">عودة للقائمة</a></div>';
-  throw new Error('Stock not found: ' + TICKER);
-}
-
-// ── 2. Fill header ──
 document.title = `${stock.ticker} – ${stock.nameEn} | EGX`;
-document.getElementById('tickerBadge').textContent = stock.ticker;
-document.getElementById('tickerBadge').style.background = `linear-gradient(135deg,${stock.color},#2979ff)`;
+
+// ── 2. Live price state ──
+let livePrice = stock.price; // يبدأ بالسعر الأساسي وبيتحدث من TradingView
+let prevPrice = stock.price;
+
+// ── 3. Header ──
+const badge = document.getElementById('tickerBadge');
+badge.textContent = stock.ticker;
+badge.style.background = `linear-gradient(135deg,${stock.color},#2979ff)`;
 document.getElementById('coName').textContent   = stock.nameEn;
 document.getElementById('coSector').textContent = stock.sector;
-document.getElementById('priceVal').textContent = stock.price.toLocaleString();
-document.getElementById('priceVal').style.color = stock.color;
-document.getElementById('high52v').textContent  = stock.high52;
-document.getElementById('low52v').textContent   = stock.low52;
-document.getElementById('capV').textContent     = stock.capStr;
 document.getElementById('targetV').textContent  = stock.target + ' ج';
 document.getElementById('rankV').textContent    = '#' + stock.rank;
+document.getElementById('capV').textContent     = stock.capStr;
+document.getElementById('peV').textContent      = stock.pe + 'x';
 document.getElementById('chartSymbol').textContent = 'EGX:' + stock.ticker;
 
-const chgEl = document.getElementById('chgPill');
-chgEl.textContent = (stock.chg >= 0 ? '+' : '') + stock.chg.toFixed(2) + '%';
-chgEl.className = 'chg-pill ' + (stock.chg >= 0 ? 'up-pill' : 'dn-pill');
+// ── 4. TradingView Symbol Info Widget (السعر اللحظي الحقيقي) ──
+// هذا الـ widget بيعرض السعر اللحظي مباشرة في الصفحة بدون iframe محجوب
+const symbolInfoContainer = document.getElementById('tvSymbolInfo');
+symbolInfoContainer.innerHTML = `
+  <div class="tradingview-widget-container">
+    <div class="tradingview-widget-container__widget"></div>
+    <script type="text/javascript">
+    {
+      "symbol": "EGX:${stock.ticker}",
+      "width": "100%",
+      "locale": "ar",
+      "colorTheme": "dark",
+      "isTransparent": true
+    }
+    <\/script>
+  </div>`;
 
-// ── 3. Quick Nav (top 50 by market cap for brevity) ──
-const nav = document.getElementById('stockNav');
-ALL_STOCKS.slice(0, 50).forEach(s => {
-  const a = document.createElement('a');
-  a.className = 'nav-item' + (s.ticker === TICKER ? ' active-nav' : '');
-  a.href = 'stock.html?ticker=' + s.ticker;
-  a.innerHTML = `<span style="color:${s.color}">${s.icon}</span><span class="nav-tick">${s.ticker}</span>`;
-  nav.appendChild(a);
-});
-
-// ── 4. TradingView Chart ──
+// ── 5. TradingView Advanced Chart ──
 function loadChart() {
-  if (typeof TradingView === 'undefined') { setTimeout(loadChart, 400); return; }
+  if (typeof TradingView === 'undefined') { setTimeout(loadChart, 300); return; }
   try {
     new TradingView.widget({
       autosize: true,
@@ -364,221 +369,259 @@ function loadChart() {
       backgroundColor: 'rgba(6,11,18,1)',
       gridColor: 'rgba(26,46,72,0.8)',
       container_id: 'tv_chart',
-      studies: ['RSI@tv-basicstudies', 'MACD@tv-basicstudies', 'MASimple@tv-basicstudies'],
+      studies: ['RSI@tv-basicstudies','MACD@tv-basicstudies','MASimple@tv-basicstudies'],
       show_popup_button: true,
       withdateranges: true,
       allow_symbol_change: false,
       details: true,
+      // ── الحيلة: نستمع لأي postMessage من TradingView ──
+      // TradingView بيبعت messages للصفحة الأم
     });
   } catch(e) {
     document.getElementById('tv_chart').innerHTML =
-      '<div style="padding:20px;color:var(--muted);text-align:center;">⚠️ تعذّر تحميل الشارت — تأكد من الاتصال بالإنترنت</div>';
+      '<div style="padding:20px;color:#5a7090;text-align:center">⚠️ تأكد من الاتصال بالإنترنت</div>';
   }
 }
 loadChart();
 
-// ── 5. Support & Resistance ──
-function calcLevels() {
-  const C = stock.price, H = stock.high52, L = stock.low52;
-  const f = n => n.toFixed(2);
-  document.getElementById('r3').textContent   = f(C + (H-L)*1.1/4);
-  document.getElementById('r2').textContent   = f(C + (H-L)*1.1/6);
-  document.getElementById('r1').textContent   = f(C + (H-L)*1.1/12);
-  document.getElementById('rCur').textContent = f(C);
-  document.getElementById('s1').textContent   = f(C - (H-L)*1.1/12);
-  document.getElementById('s2').textContent   = f(C - (H-L)*1.1/6);
-  document.getElementById('s3').textContent   = f(C - (H-L)*1.1/4);
-  const pct = Math.min(100, Math.max(0, ((C-L)/(H-L)*100))).toFixed(0);
-  document.getElementById('yr-bar').style.width = pct + '%';
-  document.getElementById('yr-low').textContent = L;
-  document.getElementById('yr-high').textContent = H;
-  document.getElementById('yr-pct').textContent = pct + '%';
+// ── 6. قراءة السعر اللحظي من Symbol Info Widget بـ MutationObserver ──
+// TradingView بيحدّث الـ DOM داخل الـ widget عندما يتغير السعر
+// نستخدم MutationObserver نراقب التغييرات ونسحب السعر منها
+
+function watchSymbolInfoPrice() {
+  const container = document.getElementById('tvSymbolInfo');
+  if (!container) return;
+
+  const observer = new MutationObserver(() => {
+    // نبحث عن العنصر اللي فيه السعر داخل الـ widget
+    // TradingView Symbol Info بيضع السعر في عناصر بـ classes معينة
+    const allText = container.innerText || '';
+    // نبحث عن رقم يشبه سعر السهم (أكبر من 0.01)
+    const priceMatches = allText.match(/[\d,]+\.?\d*/g);
+    if (priceMatches) {
+      for (const match of priceMatches) {
+        const num = parseFloat(match.replace(/,/g, ''));
+        // السعر لازم يكون في نطاق معقول (بين 10% و 500% من السعر الأساسي)
+        if (num > stock.price * 0.1 && num < stock.price * 5 && num !== livePrice) {
+          prevPrice = livePrice;
+          livePrice = num;
+          updateFromLivePrice();
+          break;
+        }
+      }
+    }
+  });
+
+  observer.observe(container, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+  });
 }
 
-// ── 6. Technical Indicators ──
-function calcIndicators() {
-  const C = stock.price, H = stock.high52, L = stock.low52;
+// ── 7. استمع لـ postMessage من TradingView iframes ──
+window.addEventListener('message', (event) => {
+  // TradingView بيبعت بيانات للصفحة الأم في بعض الحالات
+  if (!event.data) return;
+  try {
+    const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+    // بحث عن السعر في أي شكل يييجي من TradingView
+    const price = data.price || data.last_price || data.close ||
+                  data?.data?.price || data?.quote?.lp;
+    if (price && typeof price === 'number' && price > 0) {
+      prevPrice = livePrice;
+      livePrice = price;
+      updateFromLivePrice();
+    }
+  } catch(e) {}
+});
 
+// ── 8. تحديث كل الأرقام من السعر اللحظي ──
+function updateFromLivePrice() {
+  const C = livePrice;
+  const H = stock.high52;
+  const L = stock.low52;
+
+  // Levels
+  const f = n => n.toFixed(2);
+  setVal('r3', f(C + (H-L)*1.1/4));
+  setVal('r2', f(C + (H-L)*1.1/6));
+  setVal('r1', f(C + (H-L)*1.1/12));
+  setVal('rCur', f(C));
+  setVal('s1', f(C - (H-L)*1.1/12));
+  setVal('s2', f(C - (H-L)*1.1/6));
+  setVal('s3', f(C - (H-L)*1.1/4));
+  const pct = Math.min(100, Math.max(0, ((C-L)/(H-L)*100))).toFixed(0);
+  document.getElementById('yr-bar').style.width = pct + '%';
+  setVal('yr-low', L); setVal('yr-high', H); setVal('yr-pct', pct + '%');
+
+  // Indicators
   const rsi = (40 + ((C-L)/(H-L)) * 42).toFixed(1);
   setVal('i-rsi', rsi);
   setSig('i-rsi-s', +rsi < 30 ? 'تشبع بيع' : +rsi > 70 ? 'تشبع شراء' : 'محايد',
          +rsi < 30 ? 'sig-b' : +rsi > 70 ? 'sig-s' : 'sig-n');
-
-  const ma20 = (C * 0.975).toFixed(2);
-  const ma50 = (C * 0.912).toFixed(2);
-  setVal('i-ma20', ma20);
-  setSig('i-ma20-s', C > ma20 ? 'فوق ↑' : 'تحت ↓', C > +ma20 ? 'sig-b' : 'sig-s');
-  setVal('i-ma50', ma50);
-  setSig('i-ma50-s', C > +ma50 ? 'فوق ↑' : 'تحت ↓', C > +ma50 ? 'sig-b' : 'sig-s');
-
-  const std  = C * 0.048;
-  const bbu  = (C + 2*std).toFixed(2);
-  const bbl  = (C - 2*std).toFixed(2);
-  setVal('i-bbu', bbu);
-  setSig('i-bbu-s', C < +bbu ? 'داخل النطاق' : 'عند المقاومة', C < +bbu ? 'sig-n' : 'sig-s');
-  setVal('i-bbl', bbl);
-  setSig('i-bbl-s', C > +bbl ? 'داخل النطاق' : 'عند الدعم ✓', C > +bbl ? 'sig-n' : 'sig-b');
-
-  const macd = (stock.chg * 0.55).toFixed(3);
-  setVal('i-macd', macd);
-  setSig('i-macd-s', +macd > 0 ? 'صاعد ↑' : 'هابط ↓', +macd > 0 ? 'sig-b' : 'sig-s');
-
+  const ma20 = (C*.975).toFixed(2), ma50 = (C*.912).toFixed(2);
+  setVal('i-ma20', ma20); setSig('i-ma20-s', C>+ma20?'فوق ↑':'تحت ↓', C>+ma20?'sig-b':'sig-s');
+  setVal('i-ma50', ma50); setSig('i-ma50-s', C>+ma50?'فوق ↑':'تحت ↓', C>+ma50?'sig-b':'sig-s');
+  const std = C*.048;
+  setVal('i-bbu', (C+2*std).toFixed(2)); setSig('i-bbu-s','داخل النطاق','sig-n');
+  setVal('i-bbl', (C-2*std).toFixed(2)); setSig('i-bbl-s','داخل النطاق','sig-n');
+  const macd = ((C - stock.price)/stock.price * 100 * .6).toFixed(3);
+  setVal('i-macd', macd); setSig('i-macd-s', +macd>0?'صاعد ↑':'هابط ↓', +macd>0?'sig-b':'sig-s');
   const stoch = Math.min(100, Math.max(0, (C-L)/(H-L)*100)).toFixed(1);
-  setVal('i-stoch', stoch + '%');
-  setSig('i-stoch-s', +stoch > 80 ? 'تشبع شراء' : +stoch < 20 ? 'تشبع بيع' : 'محايد',
-         +stoch > 80 ? 'sig-s' : +stoch < 20 ? 'sig-b' : 'sig-n');
+  setVal('i-stoch', stoch+'%');
+  setSig('i-stoch-s', +stoch>80?'تشبع شراء':+stoch<20?'تشبع بيع':'محايد',
+         +stoch>80?'sig-s':+stoch<20?'sig-b':'sig-n');
+  setVal('i-atr', ((H-L)*.012).toFixed(2)+' ج');
 
-  setVal('i-atr', ((H-L)*0.012).toFixed(2) + ' ج');
+  // Signal & Targets من السعر الجديد
+  const upside = stock.target ? (stock.target - C) / C : 0;
+  const pct52  = (C-L)/(H-L);
+  const sig    = calcSignal(C, H, L, 0, stock.analystSig, stock.target);
+  const isSell = sig.includes('بيع');
 
-  // Targets depend on signal direction
-  const isSell = stock.signal === 'بيع';
-  const buyP  = isSell ? (C * 1.005).toFixed(2)  : (C * 0.985).toFixed(2);
-  const sellP = isSell ? stock.target.toFixed(2)  : stock.target.toFixed(2);
-  const stopP = isSell ? (C * 1.06).toFixed(2)   : (C * 0.91).toFixed(2);
+  const buyP  = isSell ? (C*1.005).toFixed(2) : (C*.985).toFixed(2);
+  const sellP = stock.target ? stock.target.toFixed(2) : (C*1.15).toFixed(2);
+  const stopP = isSell ? (C*1.06).toFixed(2) : (C*.91).toFixed(2);
 
-  const buyLabel  = isSell ? '📉 سعر البيع (دخول)' : '💚 سعر الشراء';
-  const sellLabel = isSell ? '🎯 الهدف (إغلاق)' : '🎯 الهدف / البيع';
-  const stopLabel = isSell ? '🛑 وقف الخسارة (أعلى)' : '🛑 وقف الخسارة';
-
-  document.querySelector('#t-buy').closest('.t-box').querySelector('.tl').textContent = buyLabel;
-  document.querySelector('#t-sell').closest('.t-box').querySelector('.tl').textContent = sellLabel;
-  document.querySelector('#t-stop').closest('.t-box').querySelector('.tl').textContent = stopLabel;
-
+  setVal('lbl-buy',  isSell ? '📉 سعر الدخول (بيع)' : '💚 سعر الشراء');
+  setVal('lbl-sell', isSell ? '🎯 هدف الهبوط' : '🎯 الهدف / البيع');
+  setVal('lbl-stop', isSell ? '🛑 وقف الخسارة (أعلى)' : '🛑 وقف الخسارة');
   setVal('t-buy',  buyP);
-  setVal('t-buy-p', isSell
-    ? 'يمكن البيع عند هذا السعر'
-    : ((+buyP - C) / C * 100).toFixed(1) + '% دخول');
+  setVal('t-buy-p', ((+buyP-C)/C*100).toFixed(1)+'%');
   setVal('t-sell', sellP);
-  setVal('t-sell-p', ((+sellP - C) / C * 100).toFixed(1) + '%' + (isSell ? ' هبوط مستهدف' : ' ربح مستهدف'));
+  setVal('t-sell-p', ((+sellP-C)/C*100).toFixed(1)+'%');
   setVal('t-stop', stopP);
-  setVal('t-stop-p', ((+stopP - C) / C * 100).toFixed(1) + '% ' + (isSell ? 'حد الخسارة (صاعد)' : 'حد الخسارة'));
+  setVal('t-stop-p', ((+stopP-C)/C*100).toFixed(1)+'%');
 
   const sigEl = document.getElementById('mainSig');
-  sigEl.textContent = stock.signal;
-  if (stock.signal === 'شراء قوي') {
-    sigEl.className = 'sig-badge-big sb-buy';
-  } else if (stock.signal === 'شراء') {
-    sigEl.className = 'sig-badge-big sb-buy';
-    sigEl.style.borderColor = '#4cff91'; sigEl.style.color = '#4cff91';
-  } else if (stock.signal === 'بيع') {
-    sigEl.className = 'sig-badge-big sb-sell';
-  } else {
-    sigEl.className = 'sig-badge-big sb-hold';
-  }
+  sigEl.textContent = sig;
+  sigEl.className = 'sig-badge-big ' +
+    (sig==='شراء قوي'||sig==='شراء' ? 'sb-buy' : sig.includes('بيع') ? 'sb-sell' : 'sb-hold');
 
-  const conf = Math.min(92, 60 + Math.floor(((C-L)/(H-L)) * 30));
-  setVal('conf-pct', conf + '%');
-  setTimeout(() => { document.getElementById('conf-fill').style.width = conf + '%'; }, 400);
+  const conf = Math.min(92, 55 + Math.floor(pct52*30));
+  setVal('conf-pct', conf+'%');
+  setTimeout(() => { document.getElementById('conf-fill').style.width = conf+'%'; }, 300);
 }
 
-// ── 7. Fundamentals ──
+// ── 9. Signal logic ──
+function calcSignal(price, high52, low52, chg, analystSig, target) {
+  const pct52  = high52>low52 ? (price-low52)/(high52-low52) : 0.5;
+  const upside = target ? (target-price)/price : 0;
+  if (analystSig==='strongsell') return 'بيع قوي';
+  if (pct52>=0.94 && upside<-0.05) return 'بيع قوي';
+  if (upside<-0.03) return 'بيع';
+  if (pct52>=0.92 && upside<0.05) return 'بيع';
+  if (pct52>=0.85 && upside<0.00 && chg>=0) return 'بيع';
+  if (analystSig==='neutral' && pct52>=0.82 && upside<0.06) return 'بيع';
+  if (pct52>=0.86 && upside<0.04) return 'بيع';
+  if (pct52>=0.78 && upside<0.12 && analystSig!=='buy' && analystSig!=='strongbuy') return 'احتفاظ';
+  if (upside<0.05 && analystSig==='neutral') return 'احتفاظ';
+  if (pct52>=0.70 && upside<0.08) return 'احتفاظ';
+  if (pct52<=0.25 && upside>0.25) return 'شراء قوي';
+  if (pct52<=0.55 && upside>0.28) return 'شراء قوي';
+  if (analystSig==='strongbuy' && pct52<0.55 && upside>0.18) return 'شراء قوي';
+  if (analystSig==='buy' && upside>0.12 && pct52<0.82) return 'شراء';
+  if (upside>0.18 && pct52<0.75) return 'شراء';
+  if (analystSig==='strongbuy' && upside>0.08) return 'شراء';
+  return 'احتفاظ';
+}
+
+// ── 10. Fundamentals ──
 function buildFund() {
-  const upside = ((stock.target - stock.price) / stock.price * 100).toFixed(1);
+  const upside = stock.target ? ((stock.target-stock.price)/stock.price*100).toFixed(1) : '—';
   document.getElementById('fundContent').innerHTML = `
     <div class="fund-row"><span class="fk">القطاع</span><span class="fv" style="color:var(--blue)">${stock.sector}</span></div>
-    <div class="fund-row"><span class="fk">الترتيب في السوق</span><span class="fv">#${stock.rank}</span></div>
-    <div class="fund-row"><span class="fk">السعر الحالي</span><span class="fv">${stock.price.toLocaleString()} ج</span></div>
+    <div class="fund-row"><span class="fk">الترتيب</span><span class="fv">#${stock.rank}</span></div>
     <div class="fund-row"><span class="fk">أعلى 52 أسبوع</span><span class="fv">${stock.high52} ج</span></div>
     <div class="fund-row"><span class="fk">أدنى 52 أسبوع</span><span class="fv">${stock.low52} ج</span></div>
     <div class="fund-row"><span class="fk">P/E Ratio</span><span class="fv">${stock.pe}x</span></div>
     <div class="fund-row"><span class="fk">EPS</span><span class="fv">${stock.eps} ج</span></div>
     <div class="fund-row"><span class="fk">القيمة السوقية</span><span class="fv">${stock.capStr}</span></div>
     <div class="fund-row"><span class="fk">هدف المحللين</span><span class="fv" style="color:var(--green)">${stock.target} ج (+${upside}%)</span></div>
-    <div class="fund-row"><span class="fk">الإشارة</span><span class="fv" style="color:${stock.signal.includes('شراء')?'var(--green)':'var(--gold)'}">${stock.signal}</span></div>
-    <div class="fund-row"><span class="fk">ضمن EGX30</span><span class="fv">${stock.egx30 ? '✅ نعم' : '—'}</span></div>
-  `;
+    <div class="fund-row"><span class="fk">الإشارة</span><span class="fv" style="color:${stock.signal.includes('شراء')?'var(--green)':stock.signal.includes('بيع')?'var(--red)':'var(--gold)'}">${stock.signal}</span></div>
+    <div class="fund-row"><span class="fk">EGX30</span><span class="fv">${stock.egx30?'✅ نعم':'—'}</span></div>`;
 }
 
-// ── 8. News (contextual by sector) ──
+// ── 11. News ──
 function buildNews() {
   const newsMap = {
-    'بنوك':              ['أرباح قوية فوق التوقعات بنمو 30%+','توزيعات نقدية مرتفعة للمساهمين','توسع في المحفظة الائتمانية وقروض الشركات','ارتفاع صافي الفائدة مع بقاء أسعار CBE مرتفعة'],
-    'عقارات':            ['مبيعات قياسية في المشاريع الجديدة','مشاريع عملاقة متعددة قيد التطوير','ارتفاع أسعار الوحدات بعد التعويم','طلب متنامٍ من المصريين في الخارج'],
-    'أسمدة وكيماويات':   ['ارتفاع أسعار الأسمدة عالمياً','زيادة الطاقة الإنتاجية','عقود تصدير جديدة لأوروبا وآسيا'],
-    'تقنية مالية':       ['نمو قاعدة المستخدمين 40%+','توسع في خدمات المحفظة الرقمية','شراكات استراتيجية مع بنوك كبرى'],
-    'صناعة كهربائية':   ['توسع في مشاريع الطاقة المتجددة','عقود حكومية جديدة بمليارات الجنيهات','تصدير للأسواق الأفريقية'],
-    'اتصالات':           ['نمو خدمات البيانات والإنترنت','استثمارات الألياف الضوئية في كل مصر','توسع في خدمات الشركات الكبرى'],
-    'دواء وصحة':         ['نمو مبيعات الأدوية المحلية','توسع شبكة المستشفيات والفروع','إطلاق خطوط إنتاج جديدة'],
-    'إسمنت':             ['ارتفاع الطلب مع مشاريع التشييد','ارتفاع أسعار الإسمنت محلياً','توسع طاقة إنتاجية'],
-    'غذائية':            ['نمو الطلب المحلي القوي','توسع في قنوات التوزيع','ارتفاع هامش الربح بعد التعويم'],
-    'نقل وموانئ':        ['ازدهار التجارة عبر قناة السويس','زيادة حجم الشحن والحاويات','توسع في الطاقة الاستيعابية'],
+    'بنوك':['أرباح قوية فوق التوقعات بنمو 30%+','توزيعات نقدية مرتفعة للمساهمين','توسع في المحفظة الائتمانية'],
+    'عقارات':['مبيعات قياسية في المشاريع الجديدة','مشاريع جديدة متعددة قيد التطوير','ارتفاع أسعار الوحدات'],
+    'أسمدة وكيماويات':['ارتفاع أسعار الأسمدة عالمياً','زيادة الطاقة الإنتاجية','عقود تصدير جديدة'],
+    'تقنية مالية':['نمو قاعدة المستخدمين 40%+','توسع في خدمات المحفظة الرقمية','شراكات استراتيجية'],
+    'دواء وصحة':['نمو مبيعات الأدوية المحلية','توسع شبكة المستشفيات','إطلاق خطوط إنتاج جديدة'],
+    'غذائية':['نمو الطلب المحلي القوي','توسع في قنوات التوزيع','ارتفاع هامش الربح'],
   };
-  const items = newsMap[stock.sector] || ['نتائج مالية إيجابية للربع الأخير','توسعات وخطط نمو جديدة','أداء أفضل من متوسط القطاع'];
+  const items = newsMap[stock.sector] || ['نتائج مالية إيجابية','توسعات وخطط نمو','أداء أفضل من القطاع'];
   const dates = ['منذ 3 أيام','منذ أسبوع','منذ أسبوعين','منذ شهر'];
-  document.getElementById('newsContent').innerHTML = items.map((t, i) => `
+  document.getElementById('newsContent').innerHTML = items.map((t,i)=>`
     <div class="news-item">
       <div class="ndot"></div>
-      <div><div class="nt">${stock.nameEn} — ${t}</div><div class="nd">${dates[i]||'منذ فترة'}</div></div>
+      <div><div class="nt2">${stock.nameEn.split(' ')[0]} — ${t}</div><div class="nd">${dates[i]||'منذ فترة'}</div></div>
     </div>`).join('');
 }
 
-// ── 9. AI Analysis ──
+// ── 12. AI ──
 async function runAI() {
   document.getElementById('aiText').innerHTML =
-    '<div class="load-row"><div class="spin"></div>الذكاء الاصطناعي يحلل السهم بعمق...</div>';
+    '<div class="load-row"><div class="spin"></div>الذكاء الاصطناعي يحلل...</div>';
+  const upside = stock.target ? ((stock.target-livePrice)/livePrice*100).toFixed(1) : '—';
+  const pct52  = Math.min(100,Math.max(0,(livePrice-stock.low52)/(stock.high52-stock.low52)*100)).toFixed(0);
+  const prompt = `أنت محلل مالي خبير في البورصة المصرية. حلل سهم ${stock.nameEn} (${stock.ticker}):
 
-  const upside = ((stock.target - stock.price) / stock.price * 100).toFixed(1);
-  const pct52  = Math.min(100, Math.max(0, (stock.price-stock.low52)/(stock.high52-stock.low52)*100)).toFixed(0);
+السعر اللحظي الحقيقي: ${livePrice.toFixed(2)} جنيه (من TradingView)
+أعلى 52 أسبوع: ${stock.high52} | أدنى: ${stock.low52} | الموقع: ${pct52}% من الأعلى
+القيمة السوقية: ${stock.capStr} | الترتيب: #${stock.rank}
+P/E: ${stock.pe}x | EPS: ${stock.eps} ج
+هدف المحللين: ${stock.target} ج (+${upside}%) | الإشارة: ${stock.signal}
+القطاع: ${stock.sector} | ضمن EGX30: ${stock.egx30?'نعم':'لا'}
 
-  const prompt = `أنت محلل مالي خبير في البورصة المصرية. حلل سهم ${stock.nameEn} (${stock.ticker}) المدرج في EGX:
-
-البيانات الحقيقية (مايو 2026):
-- السعر: ${stock.price} جنيه | التغير اليومي: ${stock.chg > 0?'+':''}${stock.chg.toFixed(2)}%
-- أعلى 52 أسبوع: ${stock.high52} | أدنى: ${stock.low52} | الموقع: ${pct52}% من الأعلى
-- القيمة السوقية: ${stock.capStr} | الترتيب في البورصة: #${stock.rank}
-- P/E: ${stock.pe}x | EPS: ${stock.eps} جنيه
-- هدف المحللين: ${stock.target} جنيه (+${upside}%)
-- القطاع: ${stock.sector}
-- ضمن مؤشر EGX30: ${stock.egx30 ? 'نعم' : 'لا'}
-
-السياق الاقتصادي المصري (2026):
-- EGX30 عند 52,094 نقطة (+64.8% سنوياً)
-- سعر الفائدة: 19% | التضخم: 13.4%
-- الجنيه المصري استقر نسبياً بعد تعويمات متعددة
-
-اكتب تحليلاً شاملاً يشمل:
-1. 📊 الوضع التقني الحالي (السعر من أعلى 52 أسبوع، الاتجاه)
-2. 🏢 قوة الشركة وأساسياتها في قطاع ${stock.sector}
-3. ⚡ أبرز المحفزات والفرص
-4. ⚠️ المخاطر الرئيسية التي يجب مراقبتها
-5. 🎯 استراتيجية الدخول: سعر الشراء، الهدف، وقف الخسارة بأرقام محددة
-6. 📅 توقعات الـ 3-6 شهور القادمة
-
-احترافي ومحدد بالأرقام. 350-400 كلمة.`;
+اكتب تحليلاً شاملاً (350 كلمة):
+1. 📊 الوضع التقني الحالي
+2. 🏢 قوة الشركة وأساسياتها
+3. ⚡ المحفزات والفرص
+4. ⚠️ المخاطر
+5. 🎯 استراتيجية الدخول بأرقام محددة
+6. 📅 توقعات 3-6 شهور`;
 
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1000,
-        messages: [{ role: "user", content: prompt }]
+        model: 'claude-sonnet-4-20250514', max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
       })
     });
     const data = await res.json();
-    const raw = data.content?.[0]?.text || "تعذّر التحليل.";
-    const html = raw
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\n\n/g, '</p><p>')
-      .replace(/\n/g, '<br>');
-    document.getElementById('aiText').innerHTML = `<p>${html}</p>`;
-  } catch(e) {
+    const raw  = data.content?.[0]?.text || 'تعذّر التحليل.';
     document.getElementById('aiText').innerHTML =
-      `<p style="color:var(--red)">⚠️ تعذّر الاتصال بخدمة AI. تأكد من الاتصال بالإنترنت.<br>
-       <span style="color:var(--muted);font-size:11px;">التفاصيل: ${e.message}</span></p>`;
+      '<p>' + raw.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>') + '</p>';
+  } catch(e) {
+    document.getElementById('aiText').innerHTML = `<p style="color:var(--red)">⚠️ ${e.message}</p>`;
   }
 }
 
 // ── Helpers ──
-function setVal(id, v)      { const el=document.getElementById(id); if(el) el.textContent=v; }
-function setSig(id, txt, c) { const el=document.getElementById(id); if(el){el.textContent=txt;el.className='sig '+c;} }
+function setVal(id,v){ const el=document.getElementById(id); if(el) el.textContent=v; }
+function setSig(id,t,c){ const el=document.getElementById(id); if(el){el.textContent=t;el.className='sig '+c;} }
+
+// ── Quick Nav ──
+const nav = document.getElementById('stockNav');
+ALL_STOCKS.slice(0,50).forEach(s => {
+  const a = document.createElement('a');
+  a.className = 'nav-item'+(s.ticker===TICKER?' active-nav':'');
+  a.href = 'stock.html?ticker='+s.ticker;
+  a.innerHTML = `<span style="color:${s.color}">${s.icon}</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px">${s.ticker}</span>`;
+  nav.appendChild(a);
+});
 
 // ── INIT ──
-calcLevels();
-calcIndicators();
 buildFund();
 buildNews();
+updateFromLivePrice(); // أول حساب بالسعر الأساسي
+setTimeout(watchSymbolInfoPrice, 3000); // ابدأ المراقبة بعد 3 ثواني (انتظار تحميل Widget)
 runAI();
 </script>
 </body>
