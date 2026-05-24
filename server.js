@@ -1,143 +1,231 @@
-const express = require('express');
-const cors    = require('cors');
-const yf      = require('yahoo-finance2').default;
+const express   = require('express');
+const cors      = require('cors');
+const WebSocket = require('ws');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
-// Railway + all origins
 app.set('trust proxy', 1);
-
-// Allow Railway domain explicitly
+app.use(express.json({ limit: '2mb' }));
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
-app.use(cors({ origin: '*', methods: ['GET','OPTIONS'] }));
-app.options('*', cors());
 app.use(express.static('public'));
 
-// ── قائمة كل الأسهم المصرية مع سيمبول Yahoo Finance
-// Yahoo Finance بيستخدم ".CA" لأسهم البورصة المصرية
-const TICKERS = [
-  'COMI.CA','SWDY.CA','TMGH.CA','ETEL.CA','MFPC.CA','EAST.CA','EGAL.CA',
-  'ABUK.CA','QNBE.CA','ALCN.CA','EFIH.CA','FWRY.CA','HDBK.CA','ORAS.CA',
-  'EMFD.CA','ADIB.CA','EFID.CA','HRHO.CA','BTFH.CA','JUFO.CA','IRON.CA',
-  'FERC.CA','GBCO.CA','FAIT.CA','CIEB.CA','ORHD.CA','CANA.CA','EGCH.CA',
-  'PHDC.CA','SCTS.CA','RAYA.CA','OCDI.CA','EXPA.CA','VALU.CA','HELI.CA',
-  'EFIC.CA','SKPC.CA','CLHO.CA','ARCC.CA','MCQE.CA','TAQA.CA','POUL.CA',
-  'MBSC.CA','ORWE.CA','UBEE.CA','SCEM.CA','MTIE.CA','PHAR.CA','SAUD.CA',
-  'EGSA.CA','MASR.CA','ISPH.CA','TALM.CA','CICH.CA','ATQA.CA','AMOC.CA',
-  'EGBE.CA','CIRA.CA','MHOT.CA','MOIL.CA','RMDA.CA','IFAP.CA','OLFI.CA',
-  'BINV.CA','CSAG.CA','EGTS.CA','ISMQ.CA','DOMT.CA','ELEC.CA','SUGR.CA',
-  'EGAS.CA','MOIN.CA','ACAP.CA','MIPH.CA','AMES.CA','ZMID.CA','SPIN.CA',
-  'BIOC.CA','MPRC.CA','NIPH.CA','CNFN.CA','ENGC.CA','NAPR.CA','AXPH.CA',
-  'PRDC.CA','GOUR.CA','CPCI.CA','SVCE.CA','MPCI.CA','MICH.CA','KABO.CA',
-  'AJWA.CA','AMIA.CA','OCPH.CA','ACGC.CA','UNIT.CA','ELKA.CA','LCSW.CA',
-  'ASCM.CA','SDTI.CA','AFMC.CA','ADCI.CA','EDFM.CA','INFI.CA','ADPC.CA',
+// ══════════════════════════════════════════════════════
+// PRICE CACHE
+// ══════════════════════════════════════════════════════
+let priceCache = {};
+let lastUpdate = 0;
+let wsConnected = false;
+
+// ══════════════════════════════════════════════════════
+// ALL EGX TICKERS
+// ══════════════════════════════════════════════════════
+const EGX_TICKERS = [
+  'COMI','SWDY','TMGH','ETEL','MFPC','EAST','EGAL','ABUK',
+  'QNBE','ALCN','EFIH','FWRY','HDBK','ORAS','EMFD','ADIB',
+  'EFID','HRHO','BTFH','JUFO','IRON','FERC','GBCO','FAIT',
+  'CIEB','ORHD','CANA','EGCH','PHDC','SCTS','RAYA','OCDI',
+  'EXPA','VALU','HELI','EFIC','SKPC','CLHO','ARCC','MCQE',
+  'TAQA','POUL','MBSC','ORWE','UBEE','SCEM','MTIE','PHAR',
+  'SAUD','EGSA','MASR','ISPH','TALM','CICH','ATQA','AMOC',
+  'EGBE','CIRA','MHOT','MOIL','RMDA','IFAP','OLFI','BINV',
+  'CSAG','EGTS','ISMQ','DOMT','ELEC','SUGR','EGAS','MOIN',
+  'MIPH','AMES','ZMID','SPIN','BIOC','NIPH','CNFN','ENGC',
+  'NAPR','AXPH','PRDC','GOUR','CPCI','SVCE','MPCI','MICH',
+  'KABO','AJWA','AMIA','ACGC','UNIT','ELKA','LCSW','SDTI',
 ];
 
-// ── كاش في الذاكرة — بيتحدث كل 10 ثواني
-let cache     = {};
-let lastFetch = 0;
-let isFetching = false;
+// ══════════════════════════════════════════════════════
+// TRADINGVIEW WEBSOCKET
+// ══════════════════════════════════════════════════════
+const TV_URL = 'wss://data.tradingview.com/socket.io/websocket';
+const TV_HEADERS = {
+  'Origin': 'https://www.tradingview.com',
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+};
 
-// جيب الأسعار من Yahoo Finance
-async function fetchPrices() {
-  if (isFetching) return;
-  isFetching = true;
-  console.log(`[${new Date().toISOString()}] Fetching ${TICKERS.length} tickers...`);
-
-  // Yahoo Finance بيسمح بـ ~50 طلب في نفس الوقت — نقسمهم في batches
-  const BATCH = 40;
-  const results = {};
-
-  for (let i = 0; i < TICKERS.length; i += BATCH) {
-    const batch = TICKERS.slice(i, i + BATCH);
-    await Promise.allSettled(
-      batch.map(async (symbol) => {
-        try {
-          const quote = await yf.quote(symbol, {}, { validateResult: false });
-          const ticker = symbol.replace('.CA', '');
-          results[ticker] = {
-            ticker,
-            price:     quote.regularMarketPrice        ?? null,
-            prevClose: quote.regularMarketPreviousClose ?? null,
-            chg:       quote.regularMarketChange        ?? null,
-            chgPct:    quote.regularMarketChangePercent ?? null,
-            open:      quote.regularMarketOpen          ?? null,
-            high:      quote.regularMarketDayHigh       ?? null,
-            low:       quote.regularMarketDayLow        ?? null,
-            volume:    quote.regularMarketVolume        ?? null,
-            high52:    quote.fiftyTwoWeekHigh           ?? null,
-            low52:     quote.fiftyTwoWeekLow            ?? null,
-            cap:       quote.marketCap                  ?? null,
-            pe:        quote.trailingPE                 ?? null,
-            eps:       quote.epsTrailingTwelveMonths    ?? null,
-            name:      quote.shortName                  ?? ticker,
-            ts:        Date.now(),
-          };
-        } catch (e) {
-          // سهم مش موجود في Yahoo أو خطأ — نتجاهله
-        }
-      })
-    );
-    // استنى شوية بين الـ batches عشان ما تحجبش
-    if (i + BATCH < TICKERS.length) await sleep(500);
-  }
-
-  cache     = results;
-  lastFetch = Date.now();
-  isFetching = false;
-  console.log(`[${new Date().toISOString()}] Done. Got ${Object.keys(results).length} quotes.`);
+function genSession() {
+  const chars = 'abcdefghijklmnopqrstuvwxyz';
+  return 'qs_' + Array.from({length:12}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
 }
 
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function wrapMsg(msg) {
+  return `~m~${msg.length}~m~${msg}`;
+}
 
-// ── API Endpoints ──────────────────────────────────────────────
+function tvMsg(func, args) {
+  return wrapMsg(JSON.stringify({ m: func, p: args }));
+}
+
+function parsePrice(raw) {
+  const n = parseFloat(raw);
+  return isNaN(n) ? null : Math.round(n * 100) / 100;
+}
+
+let ws = null;
+let reconnectTimer = null;
+let quoteSession = null;
+
+function connectTradingView() {
+  if (ws) {
+    try { ws.terminate(); } catch(e) {}
+  }
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+
+  console.log(`[${new Date().toISOString()}] 🔌 Connecting to TradingView...`);
+
+  ws = new WebSocket(TV_URL, { headers: TV_HEADERS });
+
+  ws.on('open', () => {
+    wsConnected = true;
+    quoteSession = genSession();
+    console.log(`[${new Date().toISOString()}] ✅ TradingView connected — session: ${quoteSession}`);
+
+    ws.send(tvMsg('set_auth_token', ['unauthorized_user_token']));
+    ws.send(tvMsg('quote_create_session', [quoteSession]));
+    ws.send(tvMsg('quote_set_fields', [
+      quoteSession,
+      'lp', 'ch', 'chp',
+      'open_price', 'high_price', 'low_price',
+      'volume', 'prev_close_price',
+      'ask', 'bid',
+    ]));
+
+    // اشترك في الأسهم على batches عشان ما يرفضش
+    const symbols = EGX_TICKERS.map(t => `EGX:${t}`);
+    const BATCH = 20;
+    for (let i = 0; i < symbols.length; i += BATCH) {
+      const batch = symbols.slice(i, i + BATCH);
+      setTimeout(() => {
+        try {
+          ws.send(tvMsg('quote_add_symbols', [quoteSession, ...batch]));
+        } catch(e) {}
+      }, i * 100);
+    }
+    console.log(`[${new Date().toISOString()}] 📡 Subscribed to ${symbols.length} EGX symbols`);
+  });
+
+  ws.on('message', (data) => {
+    const raw = data.toString();
+
+    // Heartbeat
+    if (raw.includes('~h~')) {
+      const hb = raw.match(/~h~(\d+)/);
+      if (hb) {
+        try { ws.send(wrapMsg(`~h~${hb[1]}`)); } catch(e) {}
+      }
+      return;
+    }
+
+    // Parse messages
+    const parts = raw.split(/~m~\d+~m~/);
+    for (const part of parts) {
+      if (!part || part.startsWith('~')) continue;
+      try {
+        const msg = JSON.parse(part);
+        if (msg.m === 'qsd') {
+          const payload = msg.p[1];
+          const ticker  = (payload.n || '').replace('EGX:', '');
+          const v       = payload.v || {};
+
+          const price = parsePrice(v.lp);
+          if (!ticker || !price) continue;
+
+          const prev = priceCache[ticker];
+          const prevPrice = prev?.price;
+
+          priceCache[ticker] = {
+            ticker,
+            price,
+            chg:      parsePrice(v.ch)   || 0,
+            chgPct:   parsePrice(v.chp)  || 0,
+            open:     parsePrice(v.open_price),
+            high:     parsePrice(v.high_price),
+            low:      parsePrice(v.low_price),
+            volume:   v.volume ? parseInt(v.volume) : null,
+            prevClose:parsePrice(v.prev_close_price),
+            ask:      parsePrice(v.ask),
+            bid:      parsePrice(v.bid),
+            ts:       Date.now(),
+            source:   'tradingview_live',
+            // flash direction للـ frontend
+            dir:      prevPrice ? (price > prevPrice ? 'up' : price < prevPrice ? 'down' : 'flat') : 'flat',
+          };
+          lastUpdate = Date.now();
+
+          if (!prevPrice || prevPrice !== price) {
+            console.log(`  💹 ${ticker}: ${price} (${v.chp >= 0 ? '+' : ''}${v.chp?.toFixed(2)}%)`);
+          }
+        }
+      } catch(e) {}
+    }
+  });
+
+  ws.on('error', (err) => {
+    wsConnected = false;
+    console.error(`[${new Date().toISOString()}] ❌ WS Error: ${err.message}`);
+  });
+
+  ws.on('close', () => {
+    wsConnected = false;
+    console.log(`[${new Date().toISOString()}] 🔴 TradingView disconnected — reconnecting in 5s...`);
+    reconnectTimer = setTimeout(connectTradingView, 5000);
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// API ENDPOINTS
+// ══════════════════════════════════════════════════════
 
 // GET /api/prices — كل الأسعار
 app.get('/api/prices', (req, res) => {
+  const age = Math.round((Date.now() - lastUpdate) / 1000);
   res.json({
     ok:        true,
-    count:     Object.keys(cache).length,
-    lastFetch: lastFetch,
-    age:       Math.round((Date.now() - lastFetch) / 1000) + 's',
-    data:      cache,
+    count:     Object.keys(priceCache).length,
+    lastUpdate,
+    age:       age + 's',
+    wsConnected,
+    source:    'tradingview_websocket',
+    data:      priceCache,
   });
 });
 
 // GET /api/price/:ticker — سهم واحد
 app.get('/api/price/:ticker', (req, res) => {
   const t = req.params.ticker.toUpperCase();
-  if (cache[t]) {
-    res.json({ ok: true, data: cache[t] });
-  } else {
-    res.status(404).json({ ok: false, error: 'Ticker not found', ticker: t });
-  }
+  const d = priceCache[t];
+  if (d) res.json({ ok: true, data: d });
+  else   res.status(404).json({ ok: false, error: 'Not found', ticker: t });
 });
 
-// GET /api/health — حالة السيرفر
+// GET /api/health
 app.get('/api/health', (req, res) => {
+  const age = Math.round((Date.now() - lastUpdate) / 1000);
   res.json({
-    ok:        true,
-    tickers:   TICKERS.length,
-    cached:    Object.keys(cache).length,
-    lastFetch: new Date(lastFetch).toISOString(),
-    age:       Math.round((Date.now() - lastFetch) / 1000) + 's',
+    ok:         true,
+    wsConnected,
+    cached:     Object.keys(priceCache).length,
+    lastUpdate: new Date(lastUpdate).toISOString(),
+    age:        age + 's',
+    status:     wsConnected ? '🟢 live' : '🔴 reconnecting',
   });
 });
 
-// ── تحديث تلقائي كل 10 ثواني ──
-async function startAutoRefresh() {
-  await fetchPrices(); // تحميل أول مرة
-  setInterval(fetchPrices, 10_000); // كل 10 ثواني
-}
-
+// ══════════════════════════════════════════════════════
+// START
+// ══════════════════════════════════════════════════════
 app.listen(PORT, () => {
-  console.log(`EGX Live API running on port ${PORT}`);
-  startAutoRefresh();
+  console.log(`\n🚀 EGX Live Server on port ${PORT}`);
+  console.log(`📡 Connecting to TradingView WebSocket...`);
+  connectTradingView();
 });
