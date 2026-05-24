@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>البورصة المصرية EGX – لايف</title>
+<script src="data.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+:root{
+  --bg:#060b12;--surf:#0d1828;--card:#101f35;--border:#1a2e48;
+  --accent:#00d4aa;--blue:#2979ff;--green:#00e676;--red:#ff3d5a;
+  --gold:#ffc107;--text:#dce8fa;--muted:#5a7090;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Cairo',sans-serif;min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;
+  background:linear-gradient(rgba(0,212,170,.02) 1px,transparent 1px),
+             linear-gradient(90deg,rgba(0,212,170,.02) 1px,transparent 1px);
+  background-size:50px 50px;pointer-events:none;z-index:0;}
+.wrap{position:relative;z-index:1;max-width:1600px;margin:0 auto;padding:18px 20px;}
+
+.hdr{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;
+  padding-bottom:20px;border-bottom:1px solid var(--border);margin-bottom:20px;}
+.logo-box{background:linear-gradient(135deg,var(--accent),var(--blue));color:#000;
+  font-family:'JetBrains Mono',monospace;font-weight:700;font-size:18px;
+  padding:10px 18px;border-radius:10px;letter-spacing:2px;}
+.brand h1{font-size:22px;font-weight:900;}
+.brand p{font-size:11px;color:var(--muted);margin-top:2px;}
+
+/* Live status */
+.live-status{display:flex;align-items:center;gap:8px;padding:8px 16px;
+  border-radius:20px;font-size:12px;font-weight:700;border:1px solid;transition:all .3s;}
+.live-status.connecting{background:rgba(255,193,7,.08);border-color:rgba(255,193,7,.3);color:var(--gold);}
+.live-status.live{background:rgba(0,230,118,.08);border-color:rgba(0,230,118,.3);color:var(--green);}
+.live-status.error{background:rgba(255,61,90,.08);border-color:rgba(255,61,90,.3);color:var(--red);}
+.status-dot{width:8px;height:8px;border-radius:50%;animation:blink 1.4s infinite;}
+.live .status-dot{background:var(--green);}
+.connecting .status-dot{background:var(--gold);}
+.error .status-dot{background:var(--red);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+.countdown{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted);}
+.countdown span{color:var(--accent);font-weight:700;}
+
+.search{background:var(--surf);border:1px solid var(--border);border-radius:9px;
+  padding:8px 14px;font-family:'Cairo',sans-serif;font-size:13px;color:var(--text);
+  width:230px;outline:none;}
+.search:focus{border-color:var(--accent);}
+.search::placeholder{color:var(--muted);}
+
+/* API URL config */
+.api-config{background:var(--surf);border:1px solid var(--border);border-radius:10px;
+  padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.api-config label{font-size:12px;color:var(--muted);white-space:nowrap;}
+.api-input{background:var(--card);border:1px solid var(--border);border-radius:7px;
+  padding:7px 12px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text);
+  width:340px;outline:none;flex:1;}
+.api-input:focus{border-color:var(--accent);}
+.btn-sm{background:linear-gradient(135deg,var(--accent),var(--blue));color:#000;border:none;
+  padding:7px 16px;border-radius:7px;font-family:'Cairo',sans-serif;font-size:12px;
+  font-weight:700;cursor:pointer;white-space:nowrap;}
+
+/* MACRO */
+.macro{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px;}
+.mcard{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:14px 16px;
+  transition:border-color .3s;}
+.mcard.updated{border-color:var(--accent);}
+.ml{font-size:10px;color:var(--muted);font-weight:600;margin-bottom:4px;}
+.mv{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;transition:color .3s;}
+.ms{font-size:10px;color:var(--muted);margin-top:2px;}
+.up{color:var(--green)!important;} .dn{color:var(--red)!important;} .nt{color:var(--gold)!important;}
+
+/* TABS */
+.tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
+.tab{background:var(--surf);border:1px solid var(--border);color:var(--muted);
+  padding:8px 16px;border-radius:8px;cursor:pointer;font-family:'Cairo',sans-serif;
+  font-size:13px;font-weight:700;transition:all .15s;}
+.tab:hover{border-color:var(--accent);color:var(--accent);}
+.tab.active{background:var(--accent);border-color:var(--accent);color:#000;}
+
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px;}
+.toolbar label{font-size:12px;color:var(--muted);}
+.fsel{background:var(--surf);border:1px solid var(--border);color:var(--text);
+  padding:6px 12px;border-radius:8px;font-family:'Cairo',sans-serif;font-size:12px;outline:none;cursor:pointer;}
+.count-badge{font-size:12px;color:var(--muted);margin-right:auto;}
+.count-badge span{color:var(--accent);font-weight:700;}
+
+/* TABLE */
+.tbl-wrap{background:var(--card);border:1px solid var(--border);border-radius:13px;overflow:auto;margin-bottom:22px;}
+table{width:100%;border-collapse:collapse;min-width:960px;}
+thead tr{background:var(--surf);position:sticky;top:0;z-index:5;}
+th{padding:12px 14px;font-size:11px;font-weight:700;color:var(--muted);text-align:right;
+  letter-spacing:1px;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;}
+th:hover{color:var(--accent);}
+td{padding:11px 14px;font-size:13px;border-bottom:1px solid rgba(26,46,72,.5);vertical-align:middle;
+  transition:background .2s;}
+tr:last-child td{border:none;}
+tr:hover td{background:rgba(0,212,170,.025);}
+/* flash animation when price updates */
+@keyframes flashGreen{0%{background:rgba(0,230,118,.18)}100%{background:transparent}}
+@keyframes flashRed{0%{background:rgba(255,61,90,.18)}100%{background:transparent}}
+.flash-up td{animation:flashGreen .8s ease-out;}
+.flash-dn td{animation:flashRed .8s ease-out;}
+
+.t-rank{text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);}
+.t-tick{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;}
+.t-name{font-weight:700;font-size:13px;}
+.t-sub{font-size:10px;color:var(--muted);margin-top:1px;}
+.t-sec{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;
+  background:rgba(41,121,255,.12);color:var(--blue);white-space:nowrap;}
+.t-price{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;transition:color .3s;}
+.chg-pill{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:12px;
+  padding:3px 9px;border-radius:6px;white-space:nowrap;}
+.cup{background:rgba(0,230,118,.12);color:var(--green);}
+.cdn{background:rgba(255,61,90,.12);color:var(--red);}
+.cnt{background:rgba(255,193,7,.12);color:var(--gold);}
+.t-cap{font-size:12px;color:var(--muted);}
+.yr-wrap{width:75px;}
+.yr-bg{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:3px;}
+.yr-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--blue),var(--accent));transition:width .5s;}
+.sig-sqy{background:rgba(0,230,118,.2);color:#00ff88;font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;}
+.sig-buy{background:rgba(0,230,118,.12);color:var(--green);font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;}
+.sig-hld{background:rgba(255,193,7,.12);color:var(--gold);font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;}
+.sig-sel{background:rgba(255,61,90,.12);color:var(--red);font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;}
+.sig-ssell{background:rgba(255,0,40,.2);color:#ff0028;font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;}
+.egx30-tag{font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;
+  background:rgba(255,193,7,.2);color:var(--gold);margin-left:4px;}
+.btn-open{background:linear-gradient(135deg,var(--accent),var(--blue));color:#000;border:none;
+  padding:5px 12px;border-radius:6px;font-family:'Cairo',sans-serif;font-size:11px;font-weight:700;
+  cursor:pointer;text-decoration:none;display:inline-block;transition:all .15s;}
+.btn-open:hover{transform:translateY(-1px);}
+
+/* HEATMAP */
+.heatmap{display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));gap:4px;margin-bottom:22px;}
+.hm-cell{border-radius:7px;padding:10px 4px;text-align:center;cursor:pointer;transition:all .3s;}
+.hm-cell:hover{transform:scale(1.06);z-index:2;}
+.hm-tick{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#fff;}
+.hm-price{font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,.85);margin-top:1px;}
+.hm-chg{font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,.75);}
+
+/* SECTOR GRID */
+.sec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:12px;margin-bottom:22px;}
+.sec-card{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:16px;
+  cursor:pointer;transition:all .15s;}
+.sec-card:hover{border-color:var(--accent);transform:translateY(-2px);}
+
+/* PICKS */
+.picks-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-bottom:22px;}
+.pick-card{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:18px;transition:border-color .3s;}
+
+.footer{text-align:center;padding:20px 0;border-top:1px solid var(--border);
+  color:var(--muted);font-size:11px;line-height:1.8;margin-top:8px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- HEADER -->
+<div class="hdr">
+  <div style="display:flex;align-items:center;gap:14px;">
+    <div class="logo-box">EGX</div>
+    <div class="brand">
+      <h1>البورصة المصرية – لايف</h1>
+      <p id="stockCountLbl">جاري الاتصال...</p>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <div class="countdown">تحديث في <span id="cdTimer">10</span>ث</div>
+    <div class="live-status connecting" id="liveStatus">
+      <div class="status-dot"></div>
+      <span id="statusTxt">جاري الاتصال...</span>
+    </div>
+    <input class="search" id="searchBox" placeholder="🔍 ابحث..." oninput="renderTable()">
+  </div>
+</div>
+
+<!-- API CONFIG -->
+<div class="api-config">
+  <label>🔗 رابط السيرفر (من Render):</label>
+  <input class="api-input" id="apiUrl" placeholder="https://egx-live-production.up.railway.app" value="https://egx-live-production.up.railway.app">
+  <button class="btn-sm" onclick="saveApiUrl()">حفظ واتصال</button>
+  <span style="font-size:11px;color:var(--muted);">← ضع رابط سيرفرك من Render هنا</span>
+</div>
+
+<!-- MACRO STRIP -->
+<div class="macro">
+  <div class="mcard"><div class="ml">إجمالي الأسهم</div><div class="mv" id="m-total">—</div><div class="ms">شركة مدرجة</div></div>
+  <div class="mcard"><div class="ml">صاعدة اليوم</div><div class="mv up" id="m-up">—</div><div class="ms">سهم</div></div>
+  <div class="mcard"><div class="ml">هابطة اليوم</div><div class="mv dn" id="m-dn">—</div><div class="ms">سهم</div></div>
+  <div class="mcard"><div class="ml">أعلى رابح</div><div class="mv up" id="m-topg">—</div><div class="ms" id="m-topg-pct">—</div></div>
+  <div class="mcard"><div class="ml">أكثر خاسر</div><div class="mv dn" id="m-topl">—</div><div class="ms" id="m-topl-pct">—</div></div>
+  <div class="mcard"><div class="ml">إجمالي رسملة</div><div class="mv nt" id="m-cap">—</div><div class="ms">مليار جنيه</div></div>
+  <div class="mcard"><div class="ml">سعر الفائدة</div><div class="mv nt">19.00%</div><div class="ms">CBE</div></div>
+  <div class="mcard"><div class="ml">آخر تحديث</div><div class="mv" id="m-ts" style="font-size:13px;color:var(--accent)">—</div><div class="ms">لحظي</div></div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" onclick="switchView('table',this)">📋 قائمة الأسهم</button>
+  <button class="tab" onclick="switchView('heatmap',this)">🔥 خريطة الحرارة</button>
+  <button class="tab" onclick="switchView('sectors',this)">🗂️ القطاعات</button>
+  <button class="tab" onclick="switchView('picks',this)">🤖 أفضل الفرص</button>
+</div>
+
+<!-- TABLE VIEW -->
+<div id="view-table">
+  <div class="toolbar">
+    <label>القطاع:</label>
+    <select class="fsel" id="secFilter" onchange="renderTable()"><option value="">الكل</option></select>
+    <label>الإشارة:</label>
+    <select class="fsel" id="sigFilter" onchange="renderTable()">
+      <option value="">الكل</option>
+      <option value="شراء قوي">شراء قوي</option>
+      <option value="شراء">شراء</option>
+      <option value="احتفاظ">احتفاظ</option>
+      <option value="بيع">بيع</option>
+      <option value="بيع قوي">بيع قوي</option>
+    </select>
+    <label>الفرز:</label>
+    <select class="fsel" id="sortF" onchange="renderTable()">
+      <option value="rank">الترتيب</option>
+      <option value="chgPct">التغير %</option>
+      <option value="price">السعر</option>
+      <option value="capB">الرسملة</option>
+    </select>
+    <select class="fsel" id="sortD" onchange="renderTable()">
+      <option value="asc">تصاعدي</option>
+      <option value="desc">تنازلي</option>
+    </select>
+    <label><input type="checkbox" id="egx30Only" onchange="renderTable()"> EGX30 فقط</label>
+    <div class="count-badge">عرض <span id="shownCount">—</span> سهم</div>
+  </div>
+  <div class="tbl-wrap" style="max-height:620px;overflow-y:auto;">
+    <table>
+      <thead><tr>
+        <th>#</th><th></th>
+        <th onclick="setSort('ticker')">السيمبول</th>
+        <th>الشركة</th>
+        <th onclick="setSort('price')">السعر ج</th>
+        <th onclick="setSort('chgPct')">التغير</th>
+        <th onclick="setSort('chgPct')">نطاق اليوم</th>
+        <th>52 أسبوع</th>
+        <th onclick="setSort('capB')">الرسملة</th>
+        <th>الهدف</th>
+        <th>الإشارة</th>
+        <th>تحليل</th>
+      </tr></thead>
+      <tbody id="tbl"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- HEATMAP VIEW -->
+<div id="view-heatmap" style="display:none">
+  <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">الحجم = الرسملة · اللون = التغير اليومي · يتحدث تلقائياً</div>
+  <div class="heatmap" id="hmGrid"></div>
+</div>
+
+<!-- SECTORS VIEW -->
+<div id="view-sectors" style="display:none">
+  <div class="sec-grid" id="secGrid"></div>
+</div>
+
+<!-- PICKS VIEW -->
+<div id="view-picks" style="display:none">
+  <div class="picks-grid" id="picksGrid"></div>
+</div>
+
+<div class="footer">
+  ⚠️ لأغراض تعليمية فقط — ليست نصيحة استثمارية رسمية<br>
+  الأسعار: Yahoo Finance عبر سيرفر Node.js | الشارت: TradingView | التحليل: Claude AI
+</div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════
+let API_URL = localStorage.getItem('egx_api_url') || 'https://egx-live-production.up.railway.app';
+let liveData = {}; // بيانات لحظية من السيرفر
+let prevPrices = {}; // للـ flash animation
+let currentView = 'table';
+let countdown = 10;
+
+function saveApiUrl() {
+  const url = document.getElementById('apiUrl').value.trim().replace(/\/$/, '');
+  if (!url) return alert('أدخل رابط السيرفر أولاً');
+  API_URL = url;
+  localStorage.setItem('egx_api_url', url);
+  fetchLive();
+}
+
+// ══════════════════════════════════════════════════════
+// FETCH LIVE PRICES
+// ══════════════════════════════════════════════════════
+async function fetchLive() {
+  if (!API_URL) {
+    setStatus('connecting', 'ضع رابط السيرفر أعلاه');
+    return;
+  }
+  setStatus('connecting', 'جاري جلب الأسعار...');
+  try {
+    const res  = await fetch(API_URL + '/api/prices', { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    if (!json.ok) throw new Error('API error');
+
+    // حفظ الأسعار القديمة للمقارنة
+    ALL_STOCKS.forEach(s => { prevPrices[s.ticker] = s.price; });
+
+    // دمج البيانات اللايف في ALL_STOCKS
+    let updated = 0;
+    ALL_STOCKS.forEach(s => {
+      const live = json.data[s.ticker];
+      if (live && live.price) {
+        s.price   = live.price;
+        s.chg     = live.chg    ?? 0;
+        s.chgPct  = live.chgPct ?? 0;
+        s.high    = live.high   ?? s.price;
+        s.low     = live.low    ?? s.price;
+        s.high52  = live.high52 ?? s.high52;
+        s.low52   = live.low52  ?? s.low52;
+        s.volume  = live.volume ?? 0;
+        s.capB    = live.cap ? live.cap / 1e9 : s.capB;
+        s.capStr  = fmtCap(s.capB);
+        s.pe      = live.pe  ?? s.pe;
+        s.eps     = live.eps ?? s.eps;
+        // إعادة حساب pct52 والإشارة من الأسعار الجديدة
+        s.pct52   = s.high52 > s.low52
+          ? parseFloat(((s.price - s.low52) / (s.high52 - s.low52) * 100).toFixed(1))
+          : 50;
+        s.signal  = calcSignal(s.price, s.high52, s.low52, s.chgPct, s.analystSig, s.target);
+        updated++;
+      }
+    });
+
+    liveData = json.data;
+    setStatus('live', `لايف · ${updated} سهم · ${json.age}`);
+    document.getElementById('m-ts').textContent = new Date().toLocaleTimeString('ar-EG');
+    document.getElementById('stockCountLbl').textContent =
+      ALL_STOCKS.length + ' شركة · بيانات لحظية حقيقية · Yahoo Finance';
+    updateMacro();
+    renderCurrent();
+  } catch(e) {
+    setStatus('error', 'خطأ في الاتصال — سيعيد المحاولة');
+    console.error(e);
+  }
+}
+
+function fmtCap(b) {
+  return b >= 100 ? b.toFixed(0)+' مليار' : b >= 1 ? b.toFixed(1)+' مليار' : (b*1000).toFixed(0)+' مليون';
+}
+
+// ══════════════════════════════════════════════════════
+// SIGNAL LOGIC (same as data.js but applied to live data)
+// ══════════════════════════════════════════════════════
+function calcSignal(price, high52, low52, chgPct, analystSig, target) {
+  const pct52  = high52 > low52 ? (price - low52) / (high52 - low52) : 0.5;
+  const upside = target ? (target - price) / price : 0;
+  if (analystSig === 'strongsell') return 'بيع قوي';
+  if (pct52 >= 0.94 && upside < -0.05) return 'بيع قوي';
+  if (upside < -0.03) return 'بيع';
+  if (pct52 >= 0.92 && upside < 0.05) return 'بيع';
+  if (pct52 >= 0.85 && upside < 0.00 && chgPct >= 0) return 'بيع';
+  if (analystSig === 'neutral' && pct52 >= 0.82 && upside < 0.06) return 'بيع';
+  if (pct52 >= 0.86 && upside < 0.04) return 'بيع';
+  if (pct52 >= 0.78 && upside < 0.12 && analystSig !== 'buy' && analystSig !== 'strongbuy') return 'احتفاظ';
+  if (upside < 0.05 && analystSig === 'neutral') return 'احتفاظ';
+  if (pct52 >= 0.70 && upside < 0.08) return 'احتفاظ';
+  if (pct52 <= 0.25 && upside > 0.25) return 'شراء قوي';
+  if (pct52 <= 0.55 && upside > 0.28) return 'شراء قوي';
+  if (analystSig === 'strongbuy' && pct52 < 0.55 && upside > 0.18) return 'شراء قوي';
+  if (analystSig === 'buy' && upside > 0.12 && pct52 < 0.82) return 'شراء';
+  if (upside > 0.18 && pct52 < 0.75) return 'شراء';
+  if (analystSig === 'strongbuy' && upside > 0.08) return 'شراء';
+  return 'احتفاظ';
+}
+
+// ══════════════════════════════════════════════════════
+// UI HELPERS
+// ══════════════════════════════════════════════════════
+function setStatus(type, txt) {
+  const el = document.getElementById('liveStatus');
+  el.className = 'live-status ' + type;
+  document.getElementById('statusTxt').textContent = txt;
+}
+
+function sigClass(s) {
+  return s==='شراء قوي'?'sig-sqy':s==='شراء'?'sig-buy':s==='احتفاظ'?'sig-hld':s==='بيع'?'sig-sel':'sig-ssell';
+}
+function chgClass(v) { return v>0?'cup':v<0?'cdn':'cnt'; }
+function fmtChg(v) { return (v>0?'+':'')+v.toFixed(2)+'%'; }
+
+// ══════════════════════════════════════════════════════
+// MACRO STRIP
+// ══════════════════════════════════════════════════════
+function updateMacro() {
+  const n  = ALL_STOCKS.length;
+  const up = ALL_STOCKS.filter(s=>s.chgPct>0).length;
+  const dn = ALL_STOCKS.filter(s=>s.chgPct<0).length;
+  const tg = ALL_STOCKS.reduce((a,b)=>b.chgPct>a.chgPct?b:a);
+  const tl = ALL_STOCKS.reduce((a,b)=>b.chgPct<a.chgPct?b:a);
+  const totalCap = ALL_STOCKS.reduce((a,b)=>a+b.capB,0);
+  document.getElementById('m-total').textContent = n;
+  document.getElementById('m-up').textContent    = up;
+  document.getElementById('m-dn').textContent    = dn;
+  document.getElementById('m-topg').textContent  = tg.ticker;
+  document.getElementById('m-topg-pct').textContent = fmtChg(tg.chgPct||0);
+  document.getElementById('m-topl').textContent  = tl.ticker;
+  document.getElementById('m-topl-pct').textContent = fmtChg(tl.chgPct||0);
+  document.getElementById('m-cap').textContent   = totalCap.toFixed(0);
+}
+
+// ══════════════════════════════════════════════════════
+// TABLE
+// ══════════════════════════════════════════════════════
+function getFiltered() {
+  const q  = document.getElementById('searchBox').value.trim().toLowerCase();
+  const sc = document.getElementById('secFilter').value;
+  const sg = document.getElementById('sigFilter').value;
+  const e3 = document.getElementById('egx30Only').checked;
+  const sf = document.getElementById('sortF').value;
+  const sd = document.getElementById('sortD').value;
+  let data = ALL_STOCKS;
+  if (q)  data = data.filter(s=>s.ticker.toLowerCase().includes(q)||s.nameEn.toLowerCase().includes(q));
+  if (sc) data = data.filter(s=>s.sector===sc);
+  if (sg) data = data.filter(s=>s.signal===sg);
+  if (e3) data = data.filter(s=>s.egx30);
+  data = [...data].sort((a,b)=>{
+    let va = a[sf]??0, vb = b[sf]??0;
+    if(typeof va==='string') return sd==='asc'?va.localeCompare(vb,'ar'):vb.localeCompare(va,'ar');
+    return sd==='asc'?va-vb:vb-va;
+  });
+  return data;
+}
+
+function setSort(f) {
+  const sf=document.getElementById('sortF'), sd=document.getElementById('sortD');
+  if(sf.value===f) sd.value=sd.value==='asc'?'desc':'asc'; else{sf.value=f;sd.value='desc';}
+  renderTable();
+}
+
+function renderTable() {
+  const data = getFiltered();
+  document.getElementById('shownCount').textContent = data.length;
+  const tb = document.getElementById('tbl');
+  tb.innerHTML = data.map(s => {
+    const pct52 = Math.min(100,Math.max(0, s.pct52||0));
+    const cc    = chgClass(s.chgPct||s.chg||0);
+    const upside = s.target ? ((s.target-s.price)/s.price*100).toFixed(0) : '—';
+    const dayRange = (s.high&&s.low) ? `${s.low.toFixed(2)} – ${s.high.toFixed(2)}` : '—';
+    return `<tr id="row-${s.ticker}">
+      <td class="t-rank">${s.rank}</td>
+      <td style="font-size:18px;text-align:center">${s.icon}</td>
+      <td><span class="t-tick" style="color:${s.color}">${s.egx30?'<span class="egx30-tag">30</span>':''}${s.ticker}</span></td>
+      <td><div class="t-name">${s.nameEn.substring(0,26)}</div>
+          <div class="t-sub"><span class="t-sec">${s.sector}</span></div></td>
+      <td class="t-price" id="p-${s.ticker}" style="color:${s.color}">${s.price.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+      <td><span class="chg-pill ${cc}" id="c-${s.ticker}">${fmtChg(s.chgPct||s.chg||0)}</span></td>
+      <td style="font-size:11px;color:var(--muted)">${dayRange}</td>
+      <td><div class="yr-wrap">
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted)">
+          <span>${s.low52}</span><span style="color:var(--accent)">${pct52.toFixed(0)}%</span><span>${s.high52}</span></div>
+        <div class="yr-bg"><div class="yr-fill" id="yr-${s.ticker}" style="width:${pct52}%"></div></div>
+      </div></td>
+      <td class="t-cap">${s.capStr}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent)">
+        ${s.target??'—'} ${upside!=='—'?`<span style="color:var(--green);font-size:10px">(+${upside}%)</span>`:''}
+      </td>
+      <td><span class="${sigClass(s.signal)}">${s.signal}</span></td>
+      <td><a class="btn-open" href="stock.html?ticker=${s.ticker}">📈</a></td>
+    </tr>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════
+// PARTIAL UPDATE — بدل ما يعيد رسم الجدول كله، يحدث الأرقام فقط
+// ══════════════════════════════════════════════════════
+function partialUpdate() {
+  ALL_STOCKS.forEach(s => {
+    const prev = prevPrices[s.ticker];
+    const row  = document.getElementById('row-'+s.ticker);
+    const pEl  = document.getElementById('p-'+s.ticker);
+    const cEl  = document.getElementById('c-'+s.ticker);
+    const yrEl = document.getElementById('yr-'+s.ticker);
+    if (!pEl) return;
+
+    pEl.textContent = s.price.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2});
+    cEl.textContent = fmtChg(s.chgPct||s.chg||0);
+    cEl.className   = 'chg-pill ' + chgClass(s.chgPct||s.chg||0);
+    if (yrEl) yrEl.style.width = Math.min(100,Math.max(0,s.pct52||0)) + '%';
+
+    // Flash animation لما السعر يتغير
+    if (row && prev && prev !== s.price) {
+      row.className = s.price > prev ? 'flash-up' : 'flash-dn';
+      setTimeout(() => { if(row) row.className = ''; }, 800);
+    }
+  });
+  updateMacro();
+}
+
+// ══════════════════════════════════════════════════════
+// HEATMAP
+// ══════════════════════════════════════════════════════
+function renderHeatmap() {
+  const sorted = [...ALL_STOCKS].sort((a,b)=>b.capB-a.capB);
+  document.getElementById('hmGrid').innerHTML = sorted.map(s => {
+    const chgV  = s.chgPct || s.chg || 0;
+    const inten = Math.min(1, Math.abs(chgV)/8);
+    const bg = chgV > 0
+      ? `rgba(0,230,118,${.12+inten*.55})`
+      : chgV < 0
+      ? `rgba(255,61,90,${.12+inten*.55})`
+      : 'rgba(90,112,144,.25)';
+    const h = s.capB>100?'90px':s.capB>20?'80px':s.capB>5?'72px':'62px';
+    return `<div class="hm-cell" style="background:${bg};min-height:${h}"
+      onclick="window.location='stock.html?ticker=${s.ticker}'">
+      <div class="hm-tick">${s.ticker}</div>
+      <div class="hm-price">${s.price.toFixed(2)}</div>
+      <div class="hm-chg">${fmtChg(chgV)}</div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════
+// SECTORS
+// ══════════════════════════════════════════════════════
+function renderSectors() {
+  const map = {};
+  ALL_STOCKS.forEach(s => {
+    if (!map[s.sector]) map[s.sector] = [];
+    map[s.sector].push(s);
+  });
+  document.getElementById('secGrid').innerHTML = Object.entries(map).map(([name,arr]) => {
+    const avg = (arr.reduce((a,b)=>a+(b.chgPct||b.chg||0),0)/arr.length).toFixed(2);
+    const cls = +avg>0?'up':+avg<0?'dn':'nt';
+    return `<div class="sec-card" onclick="filterBySector('${name}')">
+      <div style="font-size:24px;margin-bottom:7px">${arr[0].icon}</div>
+      <div style="font-size:12px;font-weight:700;margin-bottom:3px">${name}</div>
+      <div style="font-size:10px;color:var(--muted)">${arr.length} شركة</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;margin-top:8px" class="${cls}">${+avg>0?'+':''}${avg}%</div>
+    </div>`;
+  }).join('');
+}
+
+function filterBySector(sec) {
+  document.getElementById('secFilter').value = sec;
+  switchView('table', document.querySelector('.tab'));
+  document.querySelectorAll('.tab').forEach((t,i)=>{ if(i===0) t.classList.add('active'); else t.classList.remove('active'); });
+  renderTable();
+}
+
+// ══════════════════════════════════════════════════════
+// TOP PICKS
+// ══════════════════════════════════════════════════════
+function renderPicks() {
+  const picks = [...ALL_STOCKS]
+    .filter(s => s.target && s.signal !== 'بيع' && s.signal !== 'بيع قوي')
+    .map(s => ({...s, upside:((s.target-s.price)/s.price*100)}))
+    .sort((a,b) => b.upside - a.upside)
+    .slice(0, 20);
+  document.getElementById('picksGrid').innerHTML = picks.map((s,i) => `
+    <div class="pick-card" style="border-top:3px solid ${s.color}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+        <div>
+          <div style="font-size:24px">${s.icon}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-weight:700;color:${s.color};font-size:15px">${s.ticker}</div>
+          <div style="font-size:12px;color:var(--muted)">${s.nameEn.substring(0,28)}</div>
+        </div>
+        <div style="text-align:left">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:var(--green)">+${s.upside.toFixed(1)}%</div>
+          <div style="font-size:9px;color:var(--gold)">فرصة #${i+1}</div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px">
+        <div><div style="color:var(--muted);font-size:10px">السعر</div><b>${s.price.toFixed(2)}</b></div>
+        <div style="text-align:center"><div style="color:var(--muted);font-size:10px">الهدف</div><b style="color:var(--green)">${s.target}</b></div>
+        <div style="text-align:left"><div style="color:var(--muted);font-size:10px">الإشارة</div><span class="${sigClass(s.signal)}">${s.signal}</span></div>
+      </div>
+      <a class="btn-open" href="stock.html?ticker=${s.ticker}" style="display:block;text-align:center;margin-top:12px">📈 تحليل</a>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════════════
+// VIEW SWITCH
+// ══════════════════════════════════════════════════════
+function switchView(v, btn) {
+  currentView = v;
+  ['table','heatmap','sectors','picks'].forEach(x =>
+    document.getElementById('view-'+x).style.display = x===v?'block':'none');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderCurrent();
+}
+
+function renderCurrent() {
+  if (currentView==='table')   renderTable();
+  if (currentView==='heatmap') renderHeatmap();
+  if (currentView==='sectors') renderSectors();
+  if (currentView==='picks')   renderPicks();
+}
+
+// ══════════════════════════════════════════════════════
+// SECTOR FILTER DROPDOWN
+// ══════════════════════════════════════════════════════
+function buildSecFilter() {
+  const secs = [...new Set(ALL_STOCKS.map(s=>s.sector))].sort();
+  const sel  = document.getElementById('secFilter');
+  secs.forEach(s => { const o=document.createElement('option'); o.value=s; o.textContent=s; sel.appendChild(o); });
+}
+
+// ══════════════════════════════════════════════════════
+// COUNTDOWN + AUTO REFRESH
+// ══════════════════════════════════════════════════════
+function startCountdown() {
+  setInterval(() => {
+    countdown--;
+    document.getElementById('cdTimer').textContent = countdown;
+    if (countdown <= 0) {
+      countdown = 10;
+      fetchLive().then(() => {
+        // بعد الـ fetch، لو الجدول ظاهر → partial update بدل full re-render
+        if (currentView === 'table') partialUpdate();
+        else renderCurrent();
+      });
+    }
+  }, 1000);
+}
+
+// ══════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════
+buildSecFilter();
+// لو في API URL محفوظ، ضعه في الـ input
+if (API_URL) document.getElementById('apiUrl').value = API_URL;
+
+// أول تحميل بالبيانات الثابتة من data.js
+ALL_STOCKS.forEach(s => { s.chgPct = s.chg; s.high = s.price*1.01; s.low = s.price*0.99; });
+updateMacro();
+renderTable();
+setStatus('connecting', API_URL ? 'جاري الاتصال...' : 'ضع رابط السيرفر');
+
+// اتصل تلقائياً
+fetchLive();
+
+startCountdown();
+</script>
+</body>
+</html>
