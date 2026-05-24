@@ -250,3 +250,52 @@ const ALL_STOCKS = RAW.map((r, i) => {
     pe, eps, egx30,
   };
 });
+
+// ── الأسهم الـ 17 الإضافية ──────────────────────────
+// مضافة من القائمة الكاملة لـ TradingView EGX
+(function addMissingStocks() {
+  const MISSING_RAW = [
+  //  ticker   price   chg%   capB   H52      L52     target  analyst  nameEn
+    ['AALR',  173.77,  0.01,  1.13, 195.00,  48.00,  185.00, 'neutral','General Co for Land Reclamation'],
+    ['ACFR',   10.00,  0.00,  0.05,  12.00,   3.50,   11.00, 'neutral','Alexandria Co For Refractories'],
+    ['ACTF',    2.80,  0.00,  3.20,   3.80,   0.70,    3.20, 'neutral','Act Financial'],
+    ['ADRI',    9.59, -9.95,  0.00,  14.00,   2.20,   12.00, 'neutral','Arab Dev & Real Estate Investment'],
+    ['AFDI',   35.49, -0.03,  0.64,  45.00,   9.00,   40.00, 'neutral','Alahly For Development & Investment'],
+    ['AIDC',    0.462, 0.00,  0.00,   0.70,   0.12,    0.55, 'neutral','Arabia for Investment and Development'],
+    ['AIFI',    1.84,  2.22,  2.07,   2.50,   0.38,    2.20, 'neutral','Atlas for Investment & Food Industries'],
+    ['AIH',     0.337,-0.30,  0.53,   0.55,   0.08,    0.42, 'neutral','Arabia Investments Holding SAE'],
+    ['ALUM',   20.77,  2.67,  0.86,  26.00,   5.50,   24.00, 'neutral','Arab Aluminum Co SAE'],
+    ['AMER',    2.14,  0.00,  1.93,   3.00,   0.50,    2.60, 'neutral','Amer Group Holding'],
+    ['AMPI',    2.60,  0.00,  0.08,   3.50,   0.60,    3.00, 'neutral','AL Moasher Pay for Electronic Payment'],
+    ['ANCC',   10.00,  0.00,  0.00,  13.00,   3.00,   11.00, 'neutral','ALNAHDA Industrial Co'],
+    ['ANFI',   88.06, -4.19,  0.81, 110.00,  22.00,  100.00, 'neutral','Alexandria National Co for Financial Inv'],
+    ['APSW',    9.02,  4.40,  0.81,  12.00,   2.50,   11.00, 'neutral','Arab Polvara Spinning & Weaving'],
+    ['AREH',    1.33,  8.13,  0.49,   2.00,   0.28,    1.80, 'neutral','Egyptian Real Estate Group'],
+    ['ARVA',    7.28, -1.89,  0.56,  10.00,   1.80,    9.00, 'neutral','Arab Valves Co'],
+    ['ASPI',    0.294, 0.34,  0.58,   0.45,   0.07,    0.38, 'neutral','Aspire Capital Holding'],
+  ];
+
+  MISSING_RAW.forEach((r, i) => {
+    const [ticker, price, chg, capB, high52, low52, target, analystSig, nameEn] = r;
+    const sector  = getSector(ticker);
+    const icon    = sectorIcon(sector);
+    const color   = SECTOR_COLORS[sector] || '#00d4aa';
+    const signal  = calcSignal(price, high52, low52, chg, analystSig, target);
+    const pe      = parseFloat((price / (price * 0.072)).toFixed(1));
+    const eps     = parseFloat((price / pe).toFixed(2));
+    const capStr  = capB >= 100 ? capB.toFixed(0)+' مليار'
+                  : capB >= 1   ? capB.toFixed(1)+' مليار'
+                  :               (capB*1000).toFixed(0)+' مليون';
+    const pct52   = parseFloat(((price-low52)/(high52-low52)*100).toFixed(1));
+    ALL_STOCKS.push({
+      rank: ALL_STOCKS.length + 1, ticker, nameEn, sector, icon, color,
+      price, chg, high52, low52, pct52,
+      capB, capStr, target, signal, analystSig,
+      pe, eps, egx30: false,
+    });
+  });
+
+  // إعادة ترتيب حسب الرسملة
+  ALL_STOCKS.sort((a, b) => b.capB - a.capB);
+  ALL_STOCKS.forEach((s, i) => s.rank = i + 1);
+})();
