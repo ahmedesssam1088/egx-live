@@ -379,87 +379,134 @@ app.post('/api/analyze', async (req, res) => {
   const { provider, prompt } = req.body;
   if (!prompt) return res.status(400).json({ ok: false, error: 'No prompt' });
 
-  try {
-    let text = '';
+  // ── قائمة الموديلات المجانية على OpenRouter مرتبة بالأفضل ──
+  const FREE_MODELS = [
+    'qwen/qwen3-235b-a22b:free',
+    'meta-llama/llama-3.3-70b-instruct:free',
+    'google/gemini-2.0-flash-exp:free',
+    'deepseek/deepseek-r1:free',
+    'mistralai/mistral-7b-instruct:free',
+  ];
 
-    // ── Groq ──
+  async function callOpenRouter(model, key, prompt) {
+    const body = JSON.stringify({
+      model,
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 2048,
+    });
+    const r = await callApi('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key}`,
+        'HTTP-Referer': 'https://egx-live-production.up.railway.app',
+      },
+    }, body);
+    const text = r.body?.choices?.[0]?.message?.content;
+    if (!text || r.status !== 200) throw new Error(r.body?.error?.message || `HTTP ${r.status}`);
+    return { text, model };
+  }
+
+  async function callGroq(key, prompt) {
+    const body = JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 2048,
+    });
+    const r = await callApi('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+    }, body);
+    const text = r.body?.choices?.[0]?.message?.content;
+    if (!text || r.status !== 200) throw new Error(r.body?.error?.message || `HTTP ${r.status}`);
+    return { text, model: 'Groq — Llama 3.3 70B' };
+  }
+
+  async function callGemini(key, prompt) {
+    const body = JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { maxOutputTokens: 2048 },
+    });
+    const r = await callApi(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' } },
+      body
+    );
+    const text = r.body?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text || r.status !== 200) throw new Error(r.body?.error?.message || `HTTP ${r.status}`);
+    return { text, model: 'Gemini 2.5 Flash' };
+  }
+
+  try {
+    let result = null;
+
     if (provider === 'groq') {
       const key = process.env.GROQ_API_KEY;
-      if (!key) return res.status(500).json({ ok: false, error: 'GROQ_API_KEY not set' });
-      const body = JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 1000,
-      });
-      const r = await callApi('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-      }, body);
-      text = r.body?.choices?.[0]?.message?.content || JSON.stringify(r.body);
+      if (!key) throw new Error('GROQ_API_KEY not set');
+      result = await callGroq(key, prompt);
     }
 
-    // ── Gemini ──
     else if (provider === 'gemini') {
       const key = process.env.GEMINI_API_KEY;
-      if (!key) return res.status(500).json({ ok: false, error: 'GEMINI_API_KEY not set' });
-      const body = JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 2048 },
-      });
-      const r = await callApi(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,
-        { method: 'POST', headers: { 'Content-Type': 'application/json' } },
-        body
-      );
-      text = r.body?.candidates?.[0]?.content?.parts?.[0]?.text || JSON.stringify(r.body);
+      if (!key) throw new Error('GEMINI_API_KEY not set');
+      result = await callGemini(key, prompt);
     }
 
-
-    // ── OpenRouter ──
     else if (provider === 'openrouter') {
       const key = process.env.OPENROUTER_API_KEY;
-      if (!key) return res.status(500).json({ ok: false, error: 'OPENROUTER_API_KEY not set' });
-      const body = JSON.stringify({
-        model: 'meta-llama/llama-3.3-70b-instruct',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 1000,
-      });
-      const r = await callApi('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${key}`,
-          'HTTP-Referer': 'https://egx-live-production.up.railway.app',
-        },
-      }, body);
-      text = r.body?.choices?.[0]?.message?.content || JSON.stringify(r.body);
+      if (!key) throw new Error('OPENROUTER_API_KEY not set');
+      // جرب الموديلات بالترتيب لحد ما واحد يشتغل
+      let lastErr = '';
+      for (const model of FREE_MODELS) {
+        try {
+          result = await callOpenRouter(model, key, prompt);
+          console.log(`[AI] OpenRouter success with: ${model}`);
+          break;
+        } catch(e) {
+          lastErr = e.message;
+          console.log(`[AI] OpenRouter ${model} failed: ${e.message}, trying next...`);
+        }
+      }
+      if (!result) throw new Error(`All OpenRouter models failed. Last: ${lastErr}`);
     }
 
-    // ── Ollama — via OpenRouter (free models) ──
-    else if (provider === 'ollama') {
-      const key = process.env.OPENROUTER_API_KEY;
-      if (!key) return res.status(500).json({ ok: false, error: 'OPENROUTER_API_KEY not set' });
-      const body = JSON.stringify({
-        model: 'mistralai/mistral-7b-instruct:free',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 1000,
-      });
-      const r = await callApi('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${key}`,
-          'HTTP-Referer': 'https://egx-live-production.up.railway.app',
-        },
-      }, body);
-      text = r.body?.choices?.[0]?.message?.content || JSON.stringify(r.body);
+    else if (provider === 'auto') {
+      // Auto: جرب كل المصادر بالترتيب
+      const groqKey = process.env.GROQ_API_KEY;
+      const geminiKey = process.env.GEMINI_API_KEY;
+      const orKey = process.env.OPENROUTER_API_KEY;
+      let lastErr = '';
+
+      // 1. Groq
+      if (groqKey) {
+        try { result = await callGroq(groqKey, prompt); }
+        catch(e) { lastErr = e.message; console.log('[AI Auto] Groq failed:', e.message); }
+      }
+      // 2. Gemini
+      if (!result && geminiKey) {
+        try { result = await callGemini(geminiKey, prompt); }
+        catch(e) { lastErr = e.message; console.log('[AI Auto] Gemini failed:', e.message); }
+      }
+      // 3. OpenRouter free models
+      if (!result && orKey) {
+        for (const model of FREE_MODELS) {
+          try {
+            result = await callOpenRouter(model, orKey, prompt);
+            console.log(`[AI Auto] OpenRouter success: ${model}`);
+            break;
+          } catch(e) {
+            lastErr = e.message;
+          }
+        }
+      }
+      if (!result) throw new Error(`جميع الموديلات فشلت. آخر خطأ: ${lastErr}`);
     }
 
     else {
       return res.status(400).json({ ok: false, error: `Unknown provider: ${provider}` });
     }
 
-    res.json({ ok: true, text, provider });
+    res.json({ ok: true, text: result.text, model: result.model, provider });
 
   } catch(e) {
     console.error(`[AI Error] ${provider}:`, e.message);
