@@ -119,18 +119,25 @@ function connectTradingView() {
       'ask', 'bid',
     ]));
 
-    // اشترك في الأسهم على batches عشان ما يرفضش
+    // اشترك في الأسهم على batches
+    // delay صح: batch_index * 300ms (مش i * 100)
     const symbols = EGX_TICKERS.map(t => `EGX:${t}`);
-    const BATCH = 20;
+    const BATCH = 30;
+    const batches = [];
     for (let i = 0; i < symbols.length; i += BATCH) {
-      const batch = symbols.slice(i, i + BATCH);
+      batches.push(symbols.slice(i, i + BATCH));
+    }
+    batches.forEach((batch, batchIdx) => {
       setTimeout(() => {
         try {
-          ws.send(tvMsg('quote_add_symbols', [quoteSession, ...batch]));
-        } catch(e) {}
-      }, i * 100);
-    }
-    console.log(`[${new Date().toISOString()}] 📡 Subscribed to ${symbols.length} EGX symbols`);
+          if (ws.readyState === 1) { // OPEN
+            ws.send(tvMsg('quote_add_symbols', [quoteSession, ...batch]));
+            console.log(`[${new Date().toISOString()}] 📦 Batch ${batchIdx+1}/${batches.length}: ${batch.length} symbols`);
+          }
+        } catch(e) { console.error('Batch send error:', e.message); }
+      }, batchIdx * 500); // 500ms بين كل batch
+    });
+    console.log(`[${new Date().toISOString()}] 📡 Subscribing to ${symbols.length} symbols in ${batches.length} batches...`);
   });
 
   ws.on('message', (data) => {
@@ -229,14 +236,18 @@ app.get('/api/price/:ticker', (req, res) => {
 
 // GET /api/health
 app.get('/api/health', (req, res) => {
-  const age = Math.round((Date.now() - lastUpdate) / 1000);
+  const age     = Math.round((Date.now() - lastUpdate) / 1000);
+  const missing = EGX_TICKERS.filter(t => !priceCache[t]);
   res.json({
-    ok:         true,
+    ok:          true,
     wsConnected,
-    cached:     Object.keys(priceCache).length,
-    lastUpdate: new Date(lastUpdate).toISOString(),
-    age:        age + 's',
-    status:     wsConnected ? '🟢 live' : '🔴 reconnecting',
+    total:       EGX_TICKERS.length,
+    cached:      Object.keys(priceCache).length,
+    missing:     missing.length,
+    missingList: missing,
+    lastUpdate:  new Date(lastUpdate).toISOString(),
+    age:         age + 's',
+    status:      wsConnected ? '🟢 live' : '🔴 reconnecting',
   });
 });
 
