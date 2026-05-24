@@ -336,43 +336,24 @@ app.listen(PORT, () => {
 // ══════════════════════════════════════════════════════
 // AI ANALYSIS ENDPOINT
 // ══════════════════════════════════════════════════════
-
-// Debug: تحقق إن الـ keys موجودة
-app.get('/api/debug-keys', (req, res) => {
-  res.json({
-    GROQ_API_KEY:       process.env.GROQ_API_KEY       ? '✅ set (' + process.env.GROQ_API_KEY.length + ' chars)' : '❌ NOT SET',
-    GEMINI_API_KEY:     process.env.GEMINI_API_KEY     ? '✅ set (' + process.env.GEMINI_API_KEY.length + ' chars)' : '❌ NOT SET',
-    DEEPSEEK_API_KEY:   process.env.DEEPSEEK_API_KEY   ? '✅ set (' + process.env.DEEPSEEK_API_KEY.length + ' chars)' : '❌ NOT SET',
-    OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY ? '✅ set (' + process.env.OPENROUTER_API_KEY.length + ' chars)' : '❌ NOT SET',
-    OLLAMA_API_KEY:     process.env.OLLAMA_API_KEY     ? '✅ set (' + process.env.OLLAMA_API_KEY.length + ' chars)' : '❌ NOT SET',
-  });
-});
-function callApi(url, options, body) {
-  return new Promise((resolve, reject) => {
-    // rejectUnauthorized: false = نفس verify=False في Python
-    const opts = {
-      ...options,
-      rejectUnauthorized: false,
-    };
-    // parse URL
-    const u = new URL(url);
-    opts.hostname = u.hostname;
-    opts.port     = u.port || 443;
-    opts.path     = u.pathname + u.search;
-
-    const req = https.request(opts, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try { resolve({ status: res.statusCode, body: JSON.parse(data) }); }
-        catch(e) { resolve({ status: res.statusCode, body: data }); }
-      });
+// Node 18+ built-in fetch — أبسط وأسرع من https.request
+async function callApi(url, headers, body) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 25000);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body,
+      signal: controller.signal,
     });
-    req.on('error', reject);
-    req.setTimeout(30000, () => { req.destroy(); reject(new Error('Timeout after 30s')); });
-    if (body) req.write(body);
-    req.end();
-  });
+    const text = await res.text();
+    let json;
+    try { json = JSON.parse(text); } catch(e) { json = { raw: text }; }
+    return { status: res.status, body: json };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 app.post('/api/analyze', async (req, res) => {
@@ -414,8 +395,8 @@ app.post('/api/analyze', async (req, res) => {
       max_tokens: 2048,
     });
     const r = await callApi('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${key}`,
     }, body);
     const text = r.body?.choices?.[0]?.message?.content;
     if (!text || r.status !== 200) throw new Error(r.body?.error?.message || `HTTP ${r.status}`);
@@ -427,11 +408,7 @@ app.post('/api/analyze', async (req, res) => {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: { maxOutputTokens: 2048 },
     });
-    const r = await callApi(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,
-      { method: 'POST', headers: { 'Content-Type': 'application/json' } },
-      body
-    );
+    const r = await callApi(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, { 'Content-Type': 'application/json' }, body);
     const text = r.body?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text || r.status !== 200) throw new Error(r.body?.error?.message || `HTTP ${r.status}`);
     return { text, model: 'Gemini 2.5 Flash' };
