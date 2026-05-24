@@ -332,3 +332,130 @@ app.listen(PORT, () => {
     setInterval(fillMissingFromYahoo, 60_000);
   }, 15_000);
 });
+
+// ══════════════════════════════════════════════════════
+// AI ANALYSIS ENDPOINT
+// بيستقبل الـ prompt ويبعته للـ provider اللي المستخدم اختاره
+// الـ API keys محفوظة في Railway Environment Variables
+// ══════════════════════════════════════════════════════
+const https = require('https');
+
+function callApi(url, options, body) {
+  return new Promise((resolve, reject) => {
+    const req = https.request(url, options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try { resolve({ status: res.statusCode, body: JSON.parse(data) }); }
+        catch(e) { resolve({ status: res.statusCode, body: data }); }
+      });
+    });
+    req.on('error', reject);
+    req.setTimeout(30000, () => { req.destroy(); reject(new Error('Timeout')); });
+    if (body) req.write(body);
+    req.end();
+  });
+}
+
+app.post('/api/analyze', async (req, res) => {
+  const { provider, prompt } = req.body;
+  if (!prompt) return res.status(400).json({ ok: false, error: 'No prompt' });
+
+  try {
+    let text = '';
+
+    // ── Groq ──
+    if (provider === 'groq') {
+      const key = process.env.GROQ_API_KEY;
+      if (!key) return res.status(500).json({ ok: false, error: 'GROQ_API_KEY not set' });
+      const body = JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 1000,
+      });
+      const r = await callApi('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+      }, body);
+      text = r.body?.choices?.[0]?.message?.content || JSON.stringify(r.body);
+    }
+
+    // ── Gemini ──
+    else if (provider === 'gemini') {
+      const key = process.env.GEMINI_API_KEY;
+      if (!key) return res.status(500).json({ ok: false, error: 'GEMINI_API_KEY not set' });
+      const body = JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { maxOutputTokens: 1000 },
+      });
+      const r = await callApi(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' } },
+        body
+      );
+      text = r.body?.candidates?.[0]?.content?.parts?.[0]?.text || JSON.stringify(r.body);
+    }
+
+    // ── DeepSeek ──
+    else if (provider === 'deepseek') {
+      const key = process.env.DEEPSEEK_API_KEY;
+      if (!key) return res.status(500).json({ ok: false, error: 'DEEPSEEK_API_KEY not set' });
+      const body = JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 1000,
+      });
+      const r = await callApi('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+      }, body);
+      text = r.body?.choices?.[0]?.message?.content || JSON.stringify(r.body);
+    }
+
+    // ── OpenRouter ──
+    else if (provider === 'openrouter') {
+      const key = process.env.OPENROUTER_API_KEY;
+      if (!key) return res.status(500).json({ ok: false, error: 'OPENROUTER_API_KEY not set' });
+      const body = JSON.stringify({
+        model: 'meta-llama/llama-3.3-70b-instruct',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 1000,
+      });
+      const r = await callApi('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${key}`,
+          'HTTP-Referer': 'https://egx-live-production.up.railway.app',
+        },
+      }, body);
+      text = r.body?.choices?.[0]?.message?.content || JSON.stringify(r.body);
+    }
+
+    // ── Ollama ──
+    else if (provider === 'ollama') {
+      const key = process.env.OLLAMA_API_KEY;
+      if (!key) return res.status(500).json({ ok: false, error: 'OLLAMA_API_KEY not set' });
+      const body = JSON.stringify({
+        model: 'llama3',
+        messages: [{ role: 'user', content: prompt }],
+        stream: false,
+      });
+      const r = await callApi('https://api.ollama.ai/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+      }, body);
+      text = r.body?.message?.content || r.body?.choices?.[0]?.message?.content || JSON.stringify(r.body);
+    }
+
+    else {
+      return res.status(400).json({ ok: false, error: `Unknown provider: ${provider}` });
+    }
+
+    res.json({ ok: true, text, provider });
+
+  } catch(e) {
+    console.error(`[AI Error] ${provider}:`, e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
