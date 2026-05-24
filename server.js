@@ -407,28 +407,13 @@ app.post('/api/analyze', async (req, res) => {
         generationConfig: { maxOutputTokens: 1000 },
       });
       const r = await callApi(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,
         { method: 'POST', headers: { 'Content-Type': 'application/json' } },
         body
       );
       text = r.body?.candidates?.[0]?.content?.parts?.[0]?.text || JSON.stringify(r.body);
     }
 
-    // ── DeepSeek ──
-    else if (provider === 'deepseek') {
-      const key = process.env.DEEPSEEK_API_KEY;
-      if (!key) return res.status(500).json({ ok: false, error: 'DEEPSEEK_API_KEY not set' });
-      const body = JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 1000,
-      });
-      const r = await callApi('https://api.deepseek.com/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-      }, body);
-      text = r.body?.choices?.[0]?.message?.content || JSON.stringify(r.body);
-    }
 
     // ── OpenRouter ──
     else if (provider === 'openrouter') {
@@ -450,20 +435,24 @@ app.post('/api/analyze', async (req, res) => {
       text = r.body?.choices?.[0]?.message?.content || JSON.stringify(r.body);
     }
 
-    // ── Ollama ──
+    // ── Ollama — via OpenRouter (free models) ──
     else if (provider === 'ollama') {
-      const key = process.env.OLLAMA_API_KEY;
-      if (!key) return res.status(500).json({ ok: false, error: 'OLLAMA_API_KEY not set' });
+      const key = process.env.OPENROUTER_API_KEY;
+      if (!key) return res.status(500).json({ ok: false, error: 'OPENROUTER_API_KEY not set' });
       const body = JSON.stringify({
-        model: 'llama3',
+        model: 'mistralai/mistral-7b-instruct:free',
         messages: [{ role: 'user', content: prompt }],
-        stream: false,
+        max_tokens: 1000,
       });
-      const r = await callApi('https://api.ollama.ai/api/chat', {
+      const r = await callApi('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${key}`,
+          'HTTP-Referer': 'https://egx-live-production.up.railway.app',
+        },
       }, body);
-      text = r.body?.message?.content || r.body?.choices?.[0]?.message?.content || JSON.stringify(r.body);
+      text = r.body?.choices?.[0]?.message?.content || JSON.stringify(r.body);
     }
 
     else {
