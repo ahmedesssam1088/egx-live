@@ -329,7 +329,11 @@ body::before{content:'';position:fixed;inset:0;
     <div style="font-size:12px;color:var(--muted);font-weight:700;">اختر الموديل:</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;flex:1;">
       <label class="model-opt">
-        <input type="radio" name="aiModel" value="groq" checked>
+        <input type="radio" name="aiModel" value="auto" checked>
+        <span>🔄 Auto <small>أفضل متاح</small></span>
+      </label>
+      <label class="model-opt">
+        <input type="radio" name="aiModel" value="groq">
         <span>⚡ Groq <small>Llama 3.3 70B</small></span>
       </label>
       <label class="model-opt">
@@ -647,6 +651,7 @@ function buildNews() {
 // ── 12. AI ──
 const RAILWAY = 'https://egx-live-production.up.railway.app';
 const MODEL_NAMES = {
+  auto:       '🔄 Auto',
   groq:       '⚡ Groq — Llama 3.3 70B',
   gemini:     '✨ Gemini 2.0 Flash',
   openrouter: '🌐 OpenRouter — Llama 3.3',
@@ -686,9 +691,10 @@ async function runAI() {
     const html = raw.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                     .replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>');
 
+    const usedModel = json.model || MODEL_NAMES[provider];
     document.getElementById('aiText').innerHTML =
       '<div style="font-size:11px;color:var(--muted);margin-bottom:12px;">' +
-        'تم التحليل بواسطة <strong style="color:var(--accent)">' + MODEL_NAMES[provider] + '</strong>' +
+        'تم التحليل بواسطة <strong style="color:var(--accent)">' + usedModel + '</strong>' +
         ' · بسعر ' + currentPrice.toFixed(2) + ' ج' +
       '</div><p>' + html + '</p>';
 
