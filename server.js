@@ -335,11 +335,7 @@ app.listen(PORT, () => {
 
 // ══════════════════════════════════════════════════════
 // AI ANALYSIS ENDPOINT
-// بيستقبل الـ prompt ويبعته للـ provider اللي المستخدم اختاره
-// الـ API keys محفوظة في Railway Environment Variables
 // ══════════════════════════════════════════════════════
-const https = require('https');
-
 function callApi(url, options, body) {
   return new Promise((resolve, reject) => {
     const req = https.request(url, options, (res) => {
