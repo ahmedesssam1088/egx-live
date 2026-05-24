@@ -301,12 +301,32 @@ body::before{content:'';position:fixed;inset:0;
     </div>
   </div>
 
+  <!-- Prompt Preview Box -->
+  <div style="background:var(--surf);border:1px solid var(--border);border-radius:10px;
+              padding:14px 16px;margin-bottom:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div style="font-size:12px;color:var(--muted);font-weight:700;">📋 البرومت جاهز للنسخ</div>
+      <button onclick="copyPrompt()"
+        style="background:var(--card);border:1px solid var(--border);color:var(--muted);
+               padding:4px 12px;border-radius:6px;font-size:11px;cursor:pointer;
+               font-family:Cairo,sans-serif;"
+        onmouseover="this.style.color='var(--accent)';this.style.borderColor='var(--accent)'"
+        onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">
+        📋 نسخ
+      </button>
+    </div>
+    <div id="promptPreview"
+      style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);
+             background:var(--card);border-radius:7px;padding:12px;
+             max-height:130px;overflow-y:auto;line-height:1.7;white-space:pre-wrap;
+             border:1px solid var(--border);">جاري تحضير البرومت...</div>
+  </div>
+
   <!-- Model Selector + زر التحليل -->
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;
               background:var(--surf);border:1px solid var(--border);
               border-radius:10px;padding:14px 16px;margin-bottom:16px;">
     <div style="font-size:12px;color:var(--muted);font-weight:700;">اختر الموديل:</div>
-
     <div style="display:flex;gap:8px;flex-wrap:wrap;flex:1;">
       <label class="model-opt">
         <input type="radio" name="aiModel" value="groq" checked>
@@ -314,29 +334,18 @@ body::before{content:'';position:fixed;inset:0;
       </label>
       <label class="model-opt">
         <input type="radio" name="aiModel" value="gemini">
-        <span>✨ Gemini <small>2.0 Flash</small></span>
+        <span>✨ Gemini <small>2.5 Flash</small></span>
       </label>
-<label class="model-opt">
+      <label class="model-opt">
         <input type="radio" name="aiModel" value="openrouter">
         <span>🌐 OpenRouter <small>Llama 3.3</small></span>
       </label>
-      <label class="model-opt">
-        <input type="radio" name="aiModel" value="ollama">
-        <span>🦙 Mistral <small>7B Free</small></span>
-      </label>
     </div>
-
     <button class="btn" onclick="runAI()" id="analyzeBtn"
             style="padding:10px 22px;font-size:14px;white-space:nowrap;">
       🤖 تحليل شامل
     </button>
   </div>
-
-  <!-- النتيجة -->
-  <div class="ai-body" id="aiText">
-    <div style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">
-      اختر الموديل واضغط تحليل شامل ↑
-    </div>
   </div>
 </div>
 
@@ -386,6 +395,7 @@ async function fetchLivePrice() {
       if (json.data.low52  && json.data.low52  > 0) stock.low52  = json.data.low52;
       if (json.data.chgPct !== undefined) stock.chg = json.data.chgPct;
       updateFromLivePrice();
+      updatePromptPreview();
       return json.data;
     }
   } catch(e) { console.warn('fetchLivePrice error:', e.message); }
@@ -640,7 +650,6 @@ const MODEL_NAMES = {
   groq:       '⚡ Groq — Llama 3.3 70B',
   gemini:     '✨ Gemini 2.0 Flash',
   openrouter: '🌐 OpenRouter — Llama 3.3',
-  ollama:     '🦙 Mistral 7B Free (OpenRouter)',
 };
 
 async function runAI() {
@@ -661,24 +670,7 @@ async function runAI() {
   const chgPct  = stock.chg || 0;
   const currSig = calcSignal(currentPrice, stock.high52, stock.low52, chgPct, stock.analystSig, stock.target);
 
-  const prompt = 'أنت محلل مالي خبير في البورصة المصرية. حلل سهم ' + stock.nameEn + ' (' + stock.ticker + '):\n\n' +
-    'البيانات اللحظية الحقيقية (من TradingView):\n' +
-    '- السعر الحالي: ' + currentPrice.toFixed(2) + ' جنيه\n' +
-    '- التغير اليومي: ' + (chgPct >= 0 ? '+' : '') + chgPct.toFixed(2) + '%\n' +
-    '- أعلى 52 أسبوع: ' + stock.high52 + ' ج | أدنى: ' + stock.low52 + ' ج\n' +
-    '- موقع السعر: ' + pct52 + '% من الأعلى السنوي\n' +
-    '- القيمة السوقية: ' + stock.capStr + '\n' +
-    '- P/E: ' + stock.pe + 'x | EPS: ' + stock.eps + ' ج\n' +
-    '- هدف المحللين: ' + stock.target + ' ج (upside: +' + upside + '%)\n' +
-    '- الإشارة التقنية: ' + currSig + '\n' +
-    '- القطاع: ' + stock.sector + ' | ضمن EGX30: ' + (stock.egx30 ? 'نعم' : 'لا') + '\n\n' +
-    'اكتب تحليلاً شاملاً (350 كلمة) باللغة العربية:\n' +
-    '1. 📊 الوضع التقني الحالي بناءً على السعر ' + currentPrice.toFixed(2) + ' ج\n' +
-    '2. 🏢 قوة الشركة وأساسياتها في قطاع ' + stock.sector + '\n' +
-    '3. ⚡ المحفزات والفرص\n' +
-    '4. ⚠️ المخاطر الرئيسية\n' +
-    '5. 🎯 استراتيجية الدخول: سعر الشراء، الهدف، وقف الخسارة بأرقام محددة\n' +
-    '6. 📅 توقعات 3-6 شهور';
+  const prompt = buildPrompt();
 
   try {
     const res  = await fetch(RAILWAY + '/api/analyze', {
@@ -711,6 +703,62 @@ async function runAI() {
   }
 }
 
+// ── Build Prompt ──
+function buildPrompt() {
+  const currentPrice = livePrice;
+  const upside  = stock.target ? ((stock.target - currentPrice) / currentPrice * 100).toFixed(1) : '—';
+  const pct52   = stock.high52 > stock.low52
+    ? Math.min(100, Math.max(0, (currentPrice - stock.low52) / (stock.high52 - stock.low52) * 100)).toFixed(0)
+    : '50';
+  const chgPct  = stock.chg || 0;
+  const currSig = calcSignal(currentPrice, stock.high52, stock.low52, chgPct, stock.analystSig, stock.target);
+
+  return 'أنت محلل مالي خبير في البورصة المصرية. حلل سهم ' + stock.nameEn + ' (' + stock.ticker + '):\n\n' +
+    'البيانات اللحظية الحقيقية (من TradingView):\n' +
+    '- السعر الحالي: ' + currentPrice.toFixed(2) + ' جنيه\n' +
+    '- التغير اليومي: ' + (chgPct >= 0 ? '+' : '') + chgPct.toFixed(2) + '%\n' +
+    '- أعلى 52 أسبوع: ' + stock.high52 + ' ج | أدنى: ' + stock.low52 + ' ج\n' +
+    '- موقع السعر: ' + pct52 + '% من الأعلى السنوي\n' +
+    '- القيمة السوقية: ' + stock.capStr + '\n' +
+    '- P/E: ' + stock.pe + 'x | EPS: ' + stock.eps + ' ج\n' +
+    '- هدف المحللين: ' + stock.target + ' ج (upside: +' + upside + '%)\n' +
+    '- الإشارة التقنية: ' + currSig + '\n' +
+    '- القطاع: ' + stock.sector + ' | ضمن EGX30: ' + (stock.egx30 ? 'نعم' : 'لا') + '\n\n' +
+    'اكتب تحليلاً شاملاً (350 كلمة) باللغة العربية:\n' +
+    '1. 📊 الوضع التقني الحالي بناءً على السعر ' + currentPrice.toFixed(2) + ' ج\n' +
+    '2. 🏢 قوة الشركة وأساسياتها في قطاع ' + stock.sector + '\n' +
+    '3. ⚡ المحفزات والفرص\n' +
+    '4. ⚠️ المخاطر الرئيسية\n' +
+    '5. 🎯 استراتيجية الدخول: سعر الشراء، الهدف، وقف الخسارة بأرقام محددة\n' +
+    '6. 📅 توقعات 3-6 شهور';
+}
+
+// ── Copy Prompt ──
+function copyPrompt() {
+  const txt = buildPrompt();
+  navigator.clipboard.writeText(txt).then(() => {
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = '✅ تم النسخ';
+    btn.style.color = 'var(--green)';
+    setTimeout(() => { btn.textContent = orig; btn.style.color = 'var(--muted)'; }, 2000);
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = txt;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  });
+}
+
+// ── Update prompt preview when price changes ──
+function updatePromptPreview() {
+  const el = document.getElementById('promptPreview');
+  if (el) el.textContent = buildPrompt();
+}
+
 // ── Helpers ──
 function setVal(id,v){ const el=document.getElementById(id); if(el) el.textContent=v; }
 function setSig(id,t,c){ const el=document.getElementById(id); if(el){el.textContent=t;el.className='sig '+c;} }
@@ -729,6 +777,7 @@ ALL_STOCKS.slice(0,50).forEach(s => {
 buildFund();
 buildNews();
 updateFromLivePrice(); // حساب أولي بالسعر الأساسي من data.js
+  updatePromptPreview();
 
 // جيب السعر الحقيقي من Railway الأول، وبعدين شغّل AI بالسعر الصح
 (async () => {
