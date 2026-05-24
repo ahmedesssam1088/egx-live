@@ -320,8 +320,30 @@ const stock  = ALL_STOCKS.find(s => s.ticker === TICKER) || ALL_STOCKS[2];
 document.title = `${stock.ticker} – ${stock.nameEn} | EGX`;
 
 // ── 2. Live price state ──
-let livePrice = stock.price; // يبدأ بالسعر الأساسي وبيتحدث من TradingView
+let livePrice = stock.price; // يبدأ بالسعر الأساسي ويتحدث من Railway
 let prevPrice = stock.price;
+const RAILWAY_API = 'https://egx-live-production.up.railway.app';
+
+// جيب السعر اللحظي من Railway وحدّث كل حاجة
+async function fetchLivePrice() {
+  try {
+    const res  = await fetch(RAILWAY_API + '/api/price/' + TICKER, { signal: AbortSignal.timeout(5000) });
+    const json = await res.json();
+    if (json.ok && json.data && json.data.price) {
+      prevPrice = livePrice;
+      livePrice = json.data.price;
+      if (json.data.high52 && json.data.high52 > 0) stock.high52 = json.data.high52;
+      if (json.data.low52  && json.data.low52  > 0) stock.low52  = json.data.low52;
+      if (json.data.chgPct !== undefined) stock.chg = json.data.chgPct;
+      updateFromLivePrice();
+      return json.data;
+    }
+  } catch(e) { console.warn('fetchLivePrice error:', e.message); }
+  return null;
+}
+
+// تحديث كل 10 ثواني
+setInterval(fetchLivePrice, 10000);
 
 // ── 3. Header ──
 const badge = document.getElementById('tickerBadge');
@@ -565,24 +587,36 @@ function buildNews() {
 // ── 12. AI ──
 async function runAI() {
   document.getElementById('aiText').innerHTML =
-    '<div class="load-row"><div class="spin"></div>الذكاء الاصطناعي يحلل...</div>';
-  const upside = stock.target ? ((stock.target-livePrice)/livePrice*100).toFixed(1) : '—';
-  const pct52  = Math.min(100,Math.max(0,(livePrice-stock.low52)/(stock.high52-stock.low52)*100)).toFixed(0);
+    '<div class="load-row"><div class="spin"></div>الذكاء الاصطناعي يحلل بناءً على السعر اللحظي...</div>';
+
+  // استخدم السعر اللحظي الحقيقي الموجود في livePrice
+  const currentPrice = livePrice;
+  const upside = stock.target ? ((stock.target - currentPrice) / currentPrice * 100).toFixed(1) : '—';
+  const pct52  = stock.high52 > stock.low52
+    ? Math.min(100, Math.max(0, (currentPrice - stock.low52) / (stock.high52 - stock.low52) * 100)).toFixed(0)
+    : '50';
+  const chgPct = stock.chg || 0;
+  const currentSig = calcSignal(currentPrice, stock.high52, stock.low52, chgPct, stock.analystSig, stock.target);
+
   const prompt = `أنت محلل مالي خبير في البورصة المصرية. حلل سهم ${stock.nameEn} (${stock.ticker}):
 
-السعر اللحظي الحقيقي: ${livePrice.toFixed(2)} جنيه (من TradingView)
-أعلى 52 أسبوع: ${stock.high52} | أدنى: ${stock.low52} | الموقع: ${pct52}% من الأعلى
-القيمة السوقية: ${stock.capStr} | الترتيب: #${stock.rank}
-P/E: ${stock.pe}x | EPS: ${stock.eps} ج
-هدف المحللين: ${stock.target} ج (+${upside}%) | الإشارة: ${stock.signal}
-القطاع: ${stock.sector} | ضمن EGX30: ${stock.egx30?'نعم':'لا'}
+البيانات اللحظية الحقيقية (من TradingView عبر Railway):
+- السعر الحالي: ${currentPrice.toFixed(2)} جنيه
+- التغير اليومي: ${chgPct >= 0 ? '+' : ''}${chgPct.toFixed(2)}%
+- أعلى 52 أسبوع: ${stock.high52} ج | أدنى: ${stock.low52} ج
+- موقع السعر: ${pct52}% من الأعلى السنوي
+- القيمة السوقية: ${stock.capStr}
+- P/E: ${stock.pe}x | EPS: ${stock.eps} ج
+- هدف المحللين: ${stock.target} ج (upside: +${upside}%)
+- الإشارة التقنية الحالية: ${currentSig}
+- القطاع: ${stock.sector} | ضمن EGX30: ${stock.egx30 ? 'نعم' : 'لا'}
 
 اكتب تحليلاً شاملاً (350 كلمة):
-1. 📊 الوضع التقني الحالي
+1. 📊 الوضع التقني الحالي بناءً على السعر ${currentPrice.toFixed(2)} ج
 2. 🏢 قوة الشركة وأساسياتها
 3. ⚡ المحفزات والفرص
-4. ⚠️ المخاطر
-5. 🎯 استراتيجية الدخول بأرقام محددة
+4. ⚠️ المخاطر الرئيسية
+5. 🎯 استراتيجية الدخول: سعر الشراء، الهدف، وقف الخسارة بأرقام محددة
 6. 📅 توقعات 3-6 شهور`;
 
   try {
@@ -620,9 +654,28 @@ ALL_STOCKS.slice(0,50).forEach(s => {
 // ── INIT ──
 buildFund();
 buildNews();
-updateFromLivePrice(); // أول حساب بالسعر الأساسي
-setTimeout(watchSymbolInfoPrice, 3000); // ابدأ المراقبة بعد 3 ثواني (انتظار تحميل Widget)
-runAI();
+updateFromLivePrice(); // حساب أولي بالسعر الأساسي من data.js
+
+// جيب السعر الحقيقي من Railway الأول، وبعدين شغّل AI بالسعر الصح
+(async () => {
+  const liveData = await fetchLivePrice(); // انتظر السعر اللحظي
+  // حدّث fundamentals بالبيانات الجديدة لو جت
+  if (liveData) {
+    // حدّث خانة السعر في fundamentals
+    const fundPrice = document.querySelector('#fundContent .fund-row:nth-child(3) .fv');
+    if (fundPrice) fundPrice.textContent = livePrice.toFixed(2) + ' ج';
+    // حدّث chg
+    if (liveData.chgPct !== undefined) {
+      const chgEl = document.getElementById('chgPill');
+      if (chgEl) {
+        chgEl.textContent = (liveData.chgPct >= 0 ? '+' : '') + liveData.chgPct.toFixed(2) + '%';
+        chgEl.className = 'chg-pill ' + (liveData.chgPct >= 0 ? 'up-pill' : 'dn-pill');
+      }
+    }
+  }
+  // شغّل AI بعد ما عندنا السعر الحقيقي
+  runAI();
+})();
 </script>
 </body>
 </html>
