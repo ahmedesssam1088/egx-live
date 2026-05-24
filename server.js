@@ -404,7 +404,7 @@ app.post('/api/analyze', async (req, res) => {
       if (!key) return res.status(500).json({ ok: false, error: 'GEMINI_API_KEY not set' });
       const body = JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 1000 },
+        generationConfig: { maxOutputTokens: 2048 },
       });
       const r = await callApi(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,
