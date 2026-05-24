@@ -150,6 +150,21 @@ body::before{content:'';position:fixed;inset:0;
   padding:10px 22px;border-radius:9px;font-family:'Cairo',sans-serif;font-size:13px;font-weight:700;
   cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:7px;}
 .btn:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,212,170,.3);}
+.model-opt{
+  display:flex;align-items:center;gap:6px;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:8px;padding:7px 12px;cursor:pointer;
+  font-size:12px;font-weight:700;color:var(--muted);
+  transition:all .15s;user-select:none;
+}
+.model-opt:hover{border-color:var(--accent);color:var(--accent);}
+.model-opt input[type=radio]{display:none;}
+.model-opt:has(input:checked){
+  background:rgba(0,212,170,.1);
+  border-color:var(--accent);
+  color:var(--accent);
+}
+.model-opt small{font-size:10px;opacity:.7;display:block;}
 .footer{text-align:center;padding:22px 0;border-top:1px solid var(--border);
   color:var(--muted);font-size:11px;line-height:1.9;}
 </style>
@@ -175,7 +190,7 @@ body::before{content:'';position:fixed;inset:0;
       <div class="dot"></div>
       سعر لحظي · TradingView
     </div>
-    <button class="btn" onclick="runAI()">🤖 تحليث تحليل AI</button>
+    
   </div>
 </div>
 
@@ -280,13 +295,52 @@ body::before{content:'';position:fixed;inset:0;
 <div class="ai-box">
   <div class="ai-head">
     <div class="ai-icon">🧠</div>
-    <div>
+    <div style="flex:1">
       <div class="ai-ttl">التحليل الشامل بالذكاء الاصطناعي</div>
       <div class="ai-sub">تحليل معمّق بناءً على السعر اللحظي الحقيقي</div>
     </div>
   </div>
+
+  <!-- Model Selector + زر التحليل -->
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+              background:var(--surf);border:1px solid var(--border);
+              border-radius:10px;padding:14px 16px;margin-bottom:16px;">
+    <div style="font-size:12px;color:var(--muted);font-weight:700;">اختر الموديل:</div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;flex:1;">
+      <label class="model-opt">
+        <input type="radio" name="aiModel" value="groq" checked>
+        <span>⚡ Groq <small>Llama 3.3 70B</small></span>
+      </label>
+      <label class="model-opt">
+        <input type="radio" name="aiModel" value="gemini">
+        <span>✨ Gemini <small>2.0 Flash</small></span>
+      </label>
+      <label class="model-opt">
+        <input type="radio" name="aiModel" value="deepseek">
+        <span>🔵 DeepSeek <small>Chat</small></span>
+      </label>
+      <label class="model-opt">
+        <input type="radio" name="aiModel" value="openrouter">
+        <span>🌐 OpenRouter <small>Llama 3.3</small></span>
+      </label>
+      <label class="model-opt">
+        <input type="radio" name="aiModel" value="ollama">
+        <span>🦙 Ollama <small>Llama 3</small></span>
+      </label>
+    </div>
+
+    <button class="btn" onclick="runAI()" id="analyzeBtn"
+            style="padding:10px 22px;font-size:14px;white-space:nowrap;">
+      🤖 تحليل شامل
+    </button>
+  </div>
+
+  <!-- النتيجة -->
   <div class="ai-body" id="aiText">
-    <div class="load-row"><div class="spin"></div>جاري تحليل السهم...</div>
+    <div style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">
+      اختر الموديل واضغط تحليل شامل ↑
+    </div>
   </div>
 </div>
 
@@ -303,7 +357,7 @@ body::before{content:'';position:fixed;inset:0;
 </div>
 
 <div class="footer">
-  ⚠️ لأغراض تعليمية فقط · الشارت والسعر: TradingView (لحظي) · التحليل: Claude AI
+  ⚠️ لأغراض تعليمية فقط · الشارت والسعر: TradingView (لحظي) · التحليل: Groq / Gemini / DeepSeek / OpenRouter / Ollama
 </div>
 </div>
 
@@ -585,55 +639,80 @@ function buildNews() {
 }
 
 // ── 12. AI ──
-async function runAI() {
-  document.getElementById('aiText').innerHTML =
-    '<div class="load-row"><div class="spin"></div>الذكاء الاصطناعي يحلل بناءً على السعر اللحظي...</div>';
+const RAILWAY = 'https://egx-live-production.up.railway.app';
+const MODEL_NAMES = {
+  groq:       '⚡ Groq — Llama 3.3 70B',
+  gemini:     '✨ Gemini 2.0 Flash',
+  deepseek:   '🔵 DeepSeek Chat',
+  openrouter: '🌐 OpenRouter — Llama 3.3',
+  ollama:     '🦙 Ollama — Llama 3',
+};
 
-  // استخدم السعر اللحظي الحقيقي الموجود في livePrice
+async function runAI() {
+  const provider = document.querySelector('input[name="aiModel"]:checked')?.value || 'groq';
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ جاري التحليل...';
+
+  document.getElementById('aiText').innerHTML =
+    '<div class="load-row"><div class="spin"></div>' +
+    MODEL_NAMES[provider] + ' يحلل السهم بناءً على السعر اللحظي ' + livePrice.toFixed(2) + ' ج...</div>';
+
   const currentPrice = livePrice;
-  const upside = stock.target ? ((stock.target - currentPrice) / currentPrice * 100).toFixed(1) : '—';
-  const pct52  = stock.high52 > stock.low52
+  const upside  = stock.target ? ((stock.target - currentPrice) / currentPrice * 100).toFixed(1) : '—';
+  const pct52   = stock.high52 > stock.low52
     ? Math.min(100, Math.max(0, (currentPrice - stock.low52) / (stock.high52 - stock.low52) * 100)).toFixed(0)
     : '50';
-  const chgPct = stock.chg || 0;
-  const currentSig = calcSignal(currentPrice, stock.high52, stock.low52, chgPct, stock.analystSig, stock.target);
+  const chgPct  = stock.chg || 0;
+  const currSig = calcSignal(currentPrice, stock.high52, stock.low52, chgPct, stock.analystSig, stock.target);
 
-  const prompt = `أنت محلل مالي خبير في البورصة المصرية. حلل سهم ${stock.nameEn} (${stock.ticker}):
-
-البيانات اللحظية الحقيقية (من TradingView عبر Railway):
-- السعر الحالي: ${currentPrice.toFixed(2)} جنيه
-- التغير اليومي: ${chgPct >= 0 ? '+' : ''}${chgPct.toFixed(2)}%
-- أعلى 52 أسبوع: ${stock.high52} ج | أدنى: ${stock.low52} ج
-- موقع السعر: ${pct52}% من الأعلى السنوي
-- القيمة السوقية: ${stock.capStr}
-- P/E: ${stock.pe}x | EPS: ${stock.eps} ج
-- هدف المحللين: ${stock.target} ج (upside: +${upside}%)
-- الإشارة التقنية الحالية: ${currentSig}
-- القطاع: ${stock.sector} | ضمن EGX30: ${stock.egx30 ? 'نعم' : 'لا'}
-
-اكتب تحليلاً شاملاً (350 كلمة):
-1. 📊 الوضع التقني الحالي بناءً على السعر ${currentPrice.toFixed(2)} ج
-2. 🏢 قوة الشركة وأساسياتها
-3. ⚡ المحفزات والفرص
-4. ⚠️ المخاطر الرئيسية
-5. 🎯 استراتيجية الدخول: سعر الشراء، الهدف، وقف الخسارة بأرقام محددة
-6. 📅 توقعات 3-6 شهور`;
+  const prompt = 'أنت محلل مالي خبير في البورصة المصرية. حلل سهم ' + stock.nameEn + ' (' + stock.ticker + '):\n\n' +
+    'البيانات اللحظية الحقيقية (من TradingView):\n' +
+    '- السعر الحالي: ' + currentPrice.toFixed(2) + ' جنيه\n' +
+    '- التغير اليومي: ' + (chgPct >= 0 ? '+' : '') + chgPct.toFixed(2) + '%\n' +
+    '- أعلى 52 أسبوع: ' + stock.high52 + ' ج | أدنى: ' + stock.low52 + ' ج\n' +
+    '- موقع السعر: ' + pct52 + '% من الأعلى السنوي\n' +
+    '- القيمة السوقية: ' + stock.capStr + '\n' +
+    '- P/E: ' + stock.pe + 'x | EPS: ' + stock.eps + ' ج\n' +
+    '- هدف المحللين: ' + stock.target + ' ج (upside: +' + upside + '%)\n' +
+    '- الإشارة التقنية: ' + currSig + '\n' +
+    '- القطاع: ' + stock.sector + ' | ضمن EGX30: ' + (stock.egx30 ? 'نعم' : 'لا') + '\n\n' +
+    'اكتب تحليلاً شاملاً (350 كلمة) باللغة العربية:\n' +
+    '1. 📊 الوضع التقني الحالي بناءً على السعر ' + currentPrice.toFixed(2) + ' ج\n' +
+    '2. 🏢 قوة الشركة وأساسياتها في قطاع ' + stock.sector + '\n' +
+    '3. ⚡ المحفزات والفرص\n' +
+    '4. ⚠️ المخاطر الرئيسية\n' +
+    '5. 🎯 استراتيجية الدخول: سعر الشراء، الهدف، وقف الخسارة بأرقام محددة\n' +
+    '6. 📅 توقعات 3-6 شهور';
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res  = await fetch(RAILWAY + '/api/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514', max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }]
-      })
+      body: JSON.stringify({ provider, prompt }),
+      signal: AbortSignal.timeout(35000),
     });
-    const data = await res.json();
-    const raw  = data.content?.[0]?.text || 'تعذّر التحليل.';
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || 'فشل التحليل');
+
+    const raw  = json.text || 'لا يوجد رد.';
+    const html = raw.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>');
+
     document.getElementById('aiText').innerHTML =
-      '<p>' + raw.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>') + '</p>';
+      '<div style="font-size:11px;color:var(--muted);margin-bottom:12px;">' +
+        'تم التحليل بواسطة <strong style="color:var(--accent)">' + MODEL_NAMES[provider] + '</strong>' +
+        ' · بسعر ' + currentPrice.toFixed(2) + ' ج' +
+      '</div><p>' + html + '</p>';
+
   } catch(e) {
-    document.getElementById('aiText').innerHTML = `<p style="color:var(--red)">⚠️ ${e.message}</p>`;
+    document.getElementById('aiText').innerHTML =
+      '<div style="color:var(--red);padding:12px;background:rgba(255,61,90,.08);border-radius:8px;">' +
+      '⚠️ ' + e.message +
+      '<div style="font-size:11px;color:var(--muted);margin-top:6px;">جرّب موديل تاني أو تأكد من الاتصال</div></div>';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🤖 تحليل شامل';
   }
 }
 
