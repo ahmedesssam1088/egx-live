@@ -316,7 +316,7 @@ async function fetchLive() {
     });
 
     liveData = json.data;
-    setStatus('live', `لايف · ${updated} سهم · ${json.age}`);
+    setStatus('live', `لايف · ${json.count} سهم · ${json.age}`);
     document.getElementById('m-ts').textContent = new Date().toLocaleTimeString('ar-EG');
     document.getElementById('stockCountLbl').textContent =
       ALL_STOCKS.length + ' شركة · بيانات لحظية حقيقية · Yahoo Finance';
