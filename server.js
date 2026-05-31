@@ -1,4 +1,4 @@
-// EGX Live Server v3.0 — 147 stocks
+// EGX Live Server v3.1 — 147 stocks — with AI
 const express   = require('express');
 const cors      = require('cors');
 const WebSocket = require('ws');
