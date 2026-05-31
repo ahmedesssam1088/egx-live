@@ -267,6 +267,16 @@ function connectTradingView() {
 
 // GET /api/prices — كل الأسعار
 // GET /api/config — يبعت الـ API keys للمتصفح
+app.get('/api/debug-keys', (req, res) => {
+  res.json({
+    GROQ_API_KEY:       process.env.GROQ_API_KEY       ? '✅ set' : '❌ NOT SET',
+    GEMINI_API_KEY:     process.env.GEMINI_API_KEY     ? '✅ set' : '❌ NOT SET',
+    DEEPSEEK_API_KEY:   process.env.DEEPSEEK_API_KEY   ? '✅ set' : '❌ NOT SET',
+    OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY ? '✅ set' : '❌ NOT SET',
+    OLLAMA_API_KEY:     process.env.OLLAMA_API_KEY     ? '✅ set' : '❌ NOT SET',
+  });
+});
+
 app.get('/api/config', (req, res) => {
   res.json({
     groq:   process.env.GROQ_API_KEY        || '',
