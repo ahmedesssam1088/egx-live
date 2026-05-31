@@ -1,7 +1,7 @@
 {
   "name": "egx-live",
-  "version": "2.0.0",
-  "description": "EGX Live Prices — TradingView WebSocket",
+  "version": "3.1.0",
+  "description": "EGX Live Stock Prices — TradingView WebSocket",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
