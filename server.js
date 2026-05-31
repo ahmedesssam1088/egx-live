@@ -266,6 +266,15 @@ function connectTradingView() {
 // ══════════════════════════════════════════════════════
 
 // GET /api/prices — كل الأسعار
+// GET /api/config — يبعت الـ API keys للمتصفح
+app.get('/api/config', (req, res) => {
+  res.json({
+    groq:   process.env.GROQ_API_KEY        || '',
+    gemini: process.env.GEMINI_API_KEY      || '',
+    or:     process.env.OPENROUTER_API_KEY  || '',
+  });
+});
+
 app.get('/api/prices', (req, res) => {
   const age = Math.round((Date.now() - lastUpdate) / 1000);
   res.json({
