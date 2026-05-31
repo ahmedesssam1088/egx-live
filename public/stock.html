@@ -657,6 +657,15 @@ const MODEL_NAMES = {
   openrouter: '🌐 OpenRouter — Llama 3.3',
 };
 
+// ── API Keys (بتيجي من Railway env عبر /api/config) ──
+// هنجيبهم من السيرفر مرة واحدة عند التحميل
+let GROQ_KEY = '', GEMINI_KEY = '', OR_KEY = '';
+fetch(RAILWAY + '/api/config').then(r=>r.json()).then(d=>{
+  GROQ_KEY   = d.groq   || '';
+  GEMINI_KEY = d.gemini || '';
+  OR_KEY     = d.or     || '';
+}).catch(()=>{});
+
 async function runAI() {
   const provider = document.querySelector('input[name="aiModel"]:checked')?.value || 'groq';
   const btn = document.getElementById('analyzeBtn');
@@ -678,23 +687,80 @@ async function runAI() {
   const prompt = buildPrompt();
 
   try {
-    const res  = await fetch(RAILWAY + '/api/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider, prompt }),
-      signal: AbortSignal.timeout(35000),
-    });
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error || 'فشل التحليل');
+    let raw = null;
+    let usedModelName = MODEL_NAMES[provider] || provider;
 
-    const raw  = json.text || 'لا يوجد رد.';
+    // ── دالة مساعدة لاستخراج النص ──
+    function extractText(j) {
+      return j?.choices?.[0]?.message?.content ||
+             j?.candidates?.[0]?.content?.parts?.[0]?.text ||
+             null;
+    }
+
+    // ── Groq ──
+    if (!raw && (provider === 'groq' || provider === 'auto')) {
+      try {
+        const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':'Bearer ' + GROQ_KEY},
+          body: JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'user',content:prompt}],max_tokens:2048}),
+          signal: AbortSignal.timeout(25000),
+        });
+        const j = await r.json();
+        raw = extractText(j);
+        if (raw) usedModelName = '⚡ Groq — Llama 3.3 70B';
+      } catch(e) { console.warn('Groq:', e.message); }
+    }
+
+    // ── Gemini ──
+    if (!raw && (provider === 'gemini' || provider === 'auto')) {
+      try {
+        const r = await fetch(
+          'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + GEMINI_KEY,
+          {method:'POST', headers:{'Content-Type':'application/json'},
+           body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:2048}}),
+           signal:AbortSignal.timeout(25000)}
+        );
+        const j = await r.json();
+        raw = extractText(j);
+        if (raw) usedModelName = '✨ Gemini 2.5 Flash';
+      } catch(e) { console.warn('Gemini:', e.message); }
+    }
+
+    // ── OpenRouter ──
+    if (!raw && (provider === 'openrouter' || provider === 'auto')) {
+      const orModels = [
+        'qwen/qwen3-235b-a22b:free',
+        'meta-llama/llama-3.3-70b-instruct:free',
+        'google/gemini-2.0-flash-exp:free',
+        'deepseek/deepseek-r1:free',
+      ];
+      for (const model of orModels) {
+        try {
+          const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':'Bearer ' + OR_KEY,'HTTP-Referer':window.location.origin},
+            body:JSON.stringify({model,messages:[{role:'user',content:prompt}],max_tokens:2048}),
+            signal:AbortSignal.timeout(25000),
+          });
+          const j = await r.json();
+          raw = extractText(j);
+          if (raw) { usedModelName = '🌐 ' + model.split('/')[1]; break; }
+        } catch(e) { console.warn('OR:', model, e.message); }
+      }
+    }
+
+    if (!raw) throw new Error('كل الموديلات فشلت — تأكد من الاتصال بالإنترنت');
+
     const html = raw.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                    .replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>');
+                    .replace(/
 
-    const usedModel = json.model || MODEL_NAMES[provider];
+/g, '</p><p>').replace(/
+/g, '<br>');
+
     document.getElementById('aiText').innerHTML =
       '<div style="font-size:11px;color:var(--muted);margin-bottom:12px;">' +
-        'تم التحليل بواسطة <strong style="color:var(--accent)">' + usedModel + '</strong>' +
+        'تم التحليل بواسطة <strong style="color:var(--accent)">' + usedModelName + '</strong>' +
         ' · بسعر ' + currentPrice.toFixed(2) + ' ج' +
       '</div><p>' + html + '</p>';
 
@@ -702,7 +768,7 @@ async function runAI() {
     document.getElementById('aiText').innerHTML =
       '<div style="color:var(--red);padding:12px;background:rgba(255,61,90,.08);border-radius:8px;">' +
       '⚠️ ' + e.message +
-      '<div style="font-size:11px;color:var(--muted);margin-top:6px;">جرّب موديل تاني أو تأكد من الاتصال</div></div>';
+      '<div style="font-size:11px;color:var(--muted);margin-top:6px;">جرّب موديل تاني</div></div>';
   } finally {
     btn.disabled = false;
     btn.textContent = '🤖 تحليل شامل';
